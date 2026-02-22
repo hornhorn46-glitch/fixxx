@@ -3,10 +3,10 @@ package com.example.finalxaurora.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -45,7 +45,6 @@ fun GraphCard(
                 .fillMaxSize()
                 .padding(12.dp)
         ) {
-            // constraints.* здесь уже в PX
             val wPx = constraints.maxWidth.toFloat().coerceAtLeast(1f)
             val hPx = constraints.maxHeight.toFloat().coerceAtLeast(1f)
 
@@ -95,9 +94,8 @@ fun GraphCard(
                 return topPad + chartH * (1f - t01)
             }
 
-            // График (без текста на Canvas)
             Canvas(modifier = Modifier.fillMaxSize()) {
-                // grid (горизонтальные линии по тиккам)
+                // grid (по тиккам)
                 for ((_, y) in yTicks) {
                     drawLine(
                         color = c.textSecondary.copy(alpha = 0.12f),
@@ -141,25 +139,23 @@ fun GraphCard(
                 }
             }
 
-            // Y-цифры (композаблами поверх Canvas)
+            // Y-цифры поверх Canvas
             for ((value, yPx) in yTicks) {
                 Text(
                     text = yToText(value),
                     color = c.textSecondary.copy(alpha = 0.78f),
                     maxLines = 1,
                     overflow = TextOverflow.Clip,
-                    modifier = Modifier
-                        .padding(start = 0.dp)
-                        .offset {
-                            IntOffset(
-                                x = 0,
-                                y = (yPx - 8f).roundToInt() // чуть центрируем
-                            )
-                        }
+                    modifier = Modifier.offset {
+                        IntOffset(
+                            x = 0,
+                            y = (yPx - 8f).roundToInt()
+                        )
+                    }
                 )
             }
 
-            // Подписи X (0 / середина / конец) + единицы измерения
+            // X подписи + единицы измерения
             val xLabelY = (topPad + chartH + 6f).roundToInt()
             Text(
                 text = "0",
