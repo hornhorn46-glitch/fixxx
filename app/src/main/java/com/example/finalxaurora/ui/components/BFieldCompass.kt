@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -35,24 +37,33 @@ fun BFieldCompass(
 
     GlassCard(modifier = modifier) {
         Column(Modifier.padding(14.dp)) {
-            HeaderRow(
-                title = title,
-                value = "Bx ${Format.oneDecOrDash(bx)}   Bz ${Format.oneDecOrDash(bz)}",
-                valueColor = c.textSecondary
+            Text(
+                text = title,
+                color = c.textPrimary,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "Bx ${Format.oneDecOrDash(bx)}   Bz ${Format.oneDecOrDash(bz)}",
+                color = c.textSecondary,
+                style = MaterialTheme.typography.bodyMedium
             )
 
             Spacer(Modifier.height(10.dp))
 
             // Вектор: X вправо, Z вниз при отрицательном.
-            // То есть рисуем y = -bz (чтобы отрицательный Bz был вниз на экране).
+            // Рисуем y = -bz, чтобы отрицательный Bz был вниз на экране.
             val vx = bx.toFloat()
             val vy = (-bz).toFloat()
 
-            val targetAngle = atan2(vy, vx) // radians, 0 -> вправо
+            val targetAngle = atan2(vy, vx)
 
             val angle by animateFloatAsState(
                 targetValue = targetAngle,
-                animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.78f),
+                animationSpec = spring(
+                    stiffness = Spring.StiffnessMediumLow,
+                    dampingRatio = 0.78f
+                ),
                 label = "compassAngle"
             )
 
@@ -61,7 +72,7 @@ fun BFieldCompass(
                 val cx = size.width / 2f
                 val cy = size.height / 2f
 
-                // ring
+                // Внешнее кольцо
                 drawCircle(
                     color = c.textSecondary.copy(alpha = 0.18f),
                     radius = r,
@@ -69,11 +80,9 @@ fun BFieldCompass(
                     style = Stroke(width = 2.2f)
                 )
 
-                // Sector zones around "down" direction (negative Bz => down)
-                // Сектора по углу от "вниз" (90deg) +/- thresholds.
-                // Красн ±5°, оранж ±20°, жёлт ±40°, зел ±65°
+                // Сектора зон вокруг "вниз" (отрицательный Bz => вниз)
                 fun degToRad(d: Float) = (d * Math.PI.toFloat() / 180f)
-                val down = (Math.PI.toFloat() / 2f) // вниз в системе Canvas (x вправо, y вниз)
+                val down = (Math.PI.toFloat() / 2f) // вниз в Canvas-системе
 
                 fun drawSector(spanDeg: Float, color: androidx.compose.ui.graphics.Color, alpha: Float) {
                     val start = down - degToRad(spanDeg)
@@ -89,12 +98,13 @@ fun BFieldCompass(
                     )
                 }
 
+                // Порядок: широкая -> узкая
                 drawSector(65f, c.ok, 0.10f)
                 drawSector(40f, c.warning, 0.12f)
                 drawSector(20f, c.warning, 0.14f)
                 drawSector(5f, c.danger, 0.18f)
 
-                // needle
+                // Стрелка
                 val nx = cx + cos(angle) * (r * 0.92f)
                 val ny = cy + sin(angle) * (r * 0.92f)
 
@@ -106,6 +116,7 @@ fun BFieldCompass(
                     cap = StrokeCap.Round
                 )
 
+                // Центр
                 drawCircle(
                     color = c.glass.copy(alpha = 0.30f),
                     radius = r * 0.10f,
