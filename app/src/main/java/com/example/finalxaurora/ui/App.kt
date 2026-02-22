@@ -3,8 +3,16 @@ package com.example.finalxaurora.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.finalxaurora.domain.AppLanguage
 import com.example.finalxaurora.domain.AppMode
 import com.example.finalxaurora.ui.screens.FullImageScreen
@@ -15,9 +23,8 @@ import com.example.finalxaurora.ui.screens.SunScreen
 import com.example.finalxaurora.ui.strings.stringsFor
 import com.example.finalxaurora.ui.theme.CosmosTheme
 import com.example.finalxaurora.ui.vm.SpaceWeatherViewModel
-import com.example.finalxaurora.ui.vm.SpaceWeatherViewModelFactory
+import com.example.finalxaurora.ui.vm.VmFactory
 import com.example.finalxaurora.util.SettingsStore
-import kotlinx.coroutines.delay
 
 sealed class Screen {
     data object Now : Screen()
@@ -29,95 +36,108 @@ sealed class Screen {
 
 @Composable
 fun App(
-    vmFactory: SpaceWeatherViewModelFactory,
+    vmFactory: VmFactory,
     settings: SettingsStore
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
     var mode by remember { mutableStateOf(settings.loadMode()) }
     var language by remember { mutableStateOf(settings.loadLanguage()) }
-
     val strings = remember(language) { stringsFor(language) }
 
-    val vm: SpaceWeatherViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = vmFactory)
-    val state = vm.state
+    val vm: SpaceWeatherViewModel = viewModel(factory = vmFactory)
+    val state by vm.state
 
-    // back stack
-    val stack: SnapshotStateList<Screen> = remember { mutableStateListOf(Screen.Now) }
-    val current = stack.last()
+    // Navigation stack (no navigation-compose)
+    val stack = remember { mutableStateListOf<Screen>(Screen.Now) }
+    val current by remember { derivedStateOf { stack.last() } }
 
     fun push(s: Screen) {
-        // push должен менять state прямо сейчас — иначе и бывают “залипания”
         stack.add(s)
     }
+
     fun pop(): Boolean {
         return if (stack.size > 1) {
             stack.removeAt(stack.lastIndex)
             true
-        } else false
+        } else {
+            false
+        }
     }
 
-    // Переключение режима (Earth/Sun) должно менять главный экран без лагов
     fun setMode(newMode: AppMode) {
         if (newMode == mode) return
         mode = newMode
         settings.saveMode(newMode)
 
-        // Если пользователь на базовом экране — меняем на соответствующий режиму.
-        // Если он в Settings/Graphs/FullImage — не дёргаем.
-        val top = stack.lastOrNull()
-        if (top == Screen.Now || top == Screen.Sun) {
-            stack.removeAt(stack.lastIndex)
+        // If user is on base screen, switch content screen instantly with mode.
+        if (stack.size == 1) {
+            stack.clear()
             stack.add(if (newMode == AppMode.SUN) Screen.Sun else Screen.Now)
         }
     }
 
+    fun setLanguage(newLang: AppLanguage) {
+        if (newLang == language) return
+        language = newLang
+        settings.saveLanguage(newLang)
+    }
+
     // Double back to exit
-    var backArmed by remember { mutableStateOf(false) }
+    var lastBackMillis by remember { mutableLongStateOf(0L) }
     BackHandler {
         val didPop = pop()
-        if (!didPop) {
-            if (backArmed) {
-                // дать системе закрыть Activity
-            } else {
-                backArmed = true
-                // коротко, без “спама”
-                snackbarHostState.showSnackbar(strings.pressBackAgain)
-                // авто-сброс
-                LaunchedEffect(Unit) {
-                    delay(1300)
-                    backArmed = false
-                }
+        if (didPop) return@BackHandler
+
+        val now = System.currentTimeMillis()
+        if (now - lastBackMillis <= 1500L) {
+            // Let Activity handle exit naturally
+        } else {
+            lastBackMillis = now
+            // showSnackbar is suspend -> launch via LaunchedEffect trigger
+            vm.state.value = vm.state.value.copy(
+                errorMessage = null // keep state clean; snackbar is UI-only
+            )
+            // Fire-and-forget snackbar
+            androidx.compose.runtime.LaunchedEffect(lastBackMillis) {
+                snackbarHostState.showSnackbar(strings.backAgainToExit)
             }
         }
     }
 
     CosmosTheme(mode = mode, auroraScore = state.prediction.score) {
-        // SnackbarHost показываем один раз глобально
-        androidx.compose.foundation.layout.Box {
-            when (current) {
-                is Screen.Now -> NowScreen(
+        when (current) {
+            is Screen.Now -> {
+                NowScreen(
                     strings = strings,
                     mode = mode,
                     onModeChange = ::setMode,
                     state = state,
                     onRefresh = { vm.refresh() },
                     onOpenGraphs = { push(Screen.Graphs) },
-                    onOpenSun = { push(Screen.Sun) },
+                    onOpenSun = {
+                        // keep mode in sync if user opens Sun explicitly
+                        if (mode != AppMode.SUN) setMode(AppMode.SUN)
+                        if (stack.last() !is Screen.Sun) push(Screen.Sun)
+                    },
                     onOpenSettings = { push(Screen.Settings) },
                     snackbarHostState = snackbarHostState
                 )
+            }
 
-                is Screen.Sun -> SunScreen(
+            is Screen.Sun -> {
+                SunScreen(
                     strings = strings,
                     mode = mode,
                     onModeChange = ::setMode,
-                    onOpenImage = { t, u -> push(Screen.FullImage(t, u)) },
+                    onOpenImage = { title, url -> push(Screen.FullImage(title, url)) },
                     onBack = { pop() },
                     snackbarHostState = snackbarHostState
                 )
+            }
 
-                is Screen.Graphs -> GraphsScreen(
+            is Screen.Graphs -> {
+                GraphsScreen(
                     strings = strings,
                     mode = mode,
                     onModeChange = ::setMode,
@@ -125,34 +145,34 @@ fun App(
                     onBack = { pop() },
                     snackbarHostState = snackbarHostState
                 )
+            }
 
-                is Screen.Settings -> SettingsScreen(
+            is Screen.Settings -> {
+                SettingsScreen(
                     strings = strings,
                     mode = mode,
                     onModeChange = ::setMode,
                     language = language,
-                    onLanguageChange = {
-                        language = it
-                        settings.saveLanguage(it)
-                    },
+                    onLanguageChange = ::setLanguage,
                     onBack = { pop() },
                     snackbarHostState = snackbarHostState
                 )
-
-                is Screen.FullImage -> {
-                    val s = current as Screen.FullImage
-                    FullImageScreen(
-                        title = s.title,
-                        url = s.url,
-                        strings = strings,
-                        mode = mode,
-                        auroraScore = state.prediction.score,
-                        onBack = { pop() }
-                    )
-                }
             }
 
-            SnackbarHost(hostState = snackbarHostState)
+            is Screen.FullImage -> {
+                val s = current as Screen.FullImage
+                FullImageScreen(
+                    title = s.title,
+                    url = s.url,
+                    strings = strings,
+                    mode = mode,
+                    auroraScore = state.prediction.score,
+                    onBack = { pop() }
+                )
+            }
         }
+
+        // Snackbar host on top of everything
+        SnackbarHost(hostState = snackbarHostState)
     }
 }
