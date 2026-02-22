@@ -5,21 +5,29 @@ import com.example.finalxaurora.domain.AppLanguage
 fun stringsFor(language: AppLanguage): AppStrings {
     return when (language) {
         AppLanguage.EN -> AppStrings(
+            appName = "FinalXAurora",
+            ok = "OK",
+            info = "Info",
+            back = "Back",
+
             now = "Now",
             graphs = "Graphs",
             sun = "Sun",
             settings = "Settings",
+
             refresh = "Refresh",
+            open = "Open",
+
             updated = "Updated",
             error = "Error",
+            backAgainToExit = "Back again to exit",
 
             kpIndex = "Kp Index",
             windSpeed = "Solar Wind",
             bz = "Bz",
             bt = "Bt",
-
             bField = "B-Field",
-            bFieldDirection = "Solar wind magnetic field direction",
+            bFieldLong = "Direction of the solar wind magnetic field lines",
 
             auroraScore = "Aurora Score",
 
@@ -32,39 +40,49 @@ fun stringsFor(language: AppLanguage): AppStrings {
             cme = "CME",
             sunspots = "Sunspots",
             auroraOval = "Aurora Oval",
-            open = "Open",
 
-            backAgainToExit = "Back again to exit",
-
-            ok = "OK",
-            info = "Info",
-
+            helpKpTitle = "Kp Index",
             helpKpBody =
-                "Kp is a geomagnetic activity index (0–9). Higher Kp usually means higher chance of bright aurora and it can be visible farther south.",
+                "Kp is a geomagnetic activity index (0–9). Higher Kp usually means brighter aurora and visibility at lower latitudes.",
+
+            helpWindTitle = "Solar Wind Speed",
             helpWindBody =
-                "Solar wind speed affects how strongly the solar wind pushes the magnetosphere. Higher speed can increase disturbances.",
+                "Solar wind speed affects how strongly the magnetosphere is disturbed. Higher speed often means stronger activity.",
+
+            helpBtTitle = "Bt (Total Field)",
             helpBtBody =
-                "Bt is the total magnetic field strength (from Bx and Bz). In general: higher Bt means more energy in the system.",
+                "Bt is the total magnetic field magnitude (from Bx and Bz). Higher Bt often means more energy in the system.",
+
+            helpBFieldTitle = "Magnetic Field Direction",
             helpBFieldBody =
-                "Compass shows field direction: horizontal axis is Bx, vertical axis is Bz.\nWhen Bz is southward (negative), aurora often becomes stronger."
+                "The compass shows field direction: horizontal axis is Bx, vertical axis is Bz.\n" +
+                    "When Bz is southward (negative), aurora activity often increases."
         )
 
         AppLanguage.RU -> AppStrings(
+            appName = "FinalXAurora",
+            ok = "ОК",
+            info = "Инфо",
+            back = "Назад",
+
             now = "Сейчас",
             graphs = "Графики",
             sun = "Солнце",
             settings = "Настройки",
+
             refresh = "Обновить",
+            open = "Открыть",
+
             updated = "Обновлено",
             error = "Ошибка",
+            backAgainToExit = "Ещё раз — выход",
 
             kpIndex = "Kp индекс",
             windSpeed = "Солнечный ветер",
             bz = "Bz",
             bt = "Bt",
-
             bField = "B-поле",
-            bFieldDirection = "Направление магнитных линий солнечного ветра",
+            bFieldLong = "Направление магнитных линий солнечного ветра",
 
             auroraScore = "Аврора-скор",
 
@@ -77,21 +95,23 @@ fun stringsFor(language: AppLanguage): AppStrings {
             cme = "КВМ",
             sunspots = "Пятна",
             auroraOval = "Овал Авроры",
-            open = "Открыть",
 
-            backAgainToExit = "Ещё раз — выход",
-
-            ok = "ОК",
-            info = "Инфо",
-
+            helpKpTitle = "Kp индекс",
             helpKpBody =
-                "Kp — индекс геомагнитной активности (0–9). Чем выше Kp, тем выше шанс яркого сияния и тем южнее его можно увидеть.",
+                "Kp — индекс геомагнитной активности (0–9). Чем выше Kp, тем выше шанс яркого сияния и тем южнее оно может быть видно.",
+
+            helpWindTitle = "Солнечный ветер",
             helpWindBody =
-                "Скорость солнечного ветра показывает, насколько сильно поток давит на магнитосферу. Выше скорость — чаще сильнее возмущения.",
+                "Скорость солнечного ветра влияет на «давление» на магнитосферу. Выше скорость — чаще сильнее возмущения.",
+
+            helpBtTitle = "Bt (суммарное поле)",
             helpBtBody =
                 "Bt — общая сила магнитного поля (по Bx и Bz). Обычно: выше Bt = больше энергии в системе.",
+
+            helpBFieldTitle = "Направление поля",
             helpBFieldBody =
-                "Компас показывает направление поля: по горизонтали Bx, по вертикали Bz.\nКогда Bz «южный» (отрицательный), сияние часто усиливается."
+                "Компас показывает направление поля: по горизонтали Bx, по вертикали Bz.\n" +
+                    "Когда Bz «южный» (отрицательный), сияние часто усиливается."
         )
     }
 }
