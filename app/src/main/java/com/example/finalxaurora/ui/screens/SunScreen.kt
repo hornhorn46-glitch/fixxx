@@ -57,7 +57,6 @@ fun SunScreen(
     AuroraBackground(mode = mode)
 
     var tab by remember { mutableIntStateOf(0) }
-
     val isRu = strings.sun == "Солнце"
 
     Column(
@@ -72,7 +71,7 @@ fun SunScreen(
             title = strings.sun,
             onBack = onBack,
             actions = {
-                // Важно: крупная кнопка, как на главном
+                // Крупная, как на главном
                 ModeToggle(mode = mode, onToggle = onModeChange, large = true)
             }
         )
@@ -82,7 +81,7 @@ fun SunScreen(
         GlassCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp)) {
                 Text(
-                    text = if (isRu) "Солнечная активность — как это читать" else "Solar activity — how to read",
+                    text = if (isRu) "Как это читать" else "How to read",
                     color = c.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -90,13 +89,13 @@ fun SunScreen(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = if (isRu) {
-                        "• CME (корональные выбросы) — главный кандидат на бурю.\n" +
-                            "• Пятна/активные области — вероятность вспышек.\n" +
-                            "• Овал авроры — где сияние вероятнее прямо сейчас."
+                        "• CME — главный кандидат на бурю.\n" +
+                            "• Пятна — вероятность вспышек.\n" +
+                            "• Овал — где сияние вероятнее."
                     } else {
-                        "• CME — prime candidate for geomagnetic storms.\n" +
-                            "• Sunspots/active regions — flare potential.\n" +
-                            "• Aurora oval — where aurora is more likely now."
+                        "• CME — prime candidate for storms.\n" +
+                            "• Sunspots — flare potential.\n" +
+                            "• Oval — where aurora is more likely."
                     },
                     color = c.textSecondary
                 )
@@ -117,31 +116,35 @@ fun SunScreen(
             },
             label = "sunTabAnim"
         ) { idx ->
-            val (title, url, hint) = when (idx) {
-                0 -> Triple(
-                    strings.cme,
-                    SpaceWeatherApi.URL_SUN_CME,
-                    if (isRu)
-                        "Ищем направленный в сторону Земли выброс и «яркое/плотное» облако."
+            val title: String
+            val url: String
+            val hint: String
+
+            when (idx) {
+                0 -> {
+                    title = strings.cme
+                    url = SpaceWeatherApi.URL_SUN_CME
+                    hint = if (isRu)
+                        "Ищем выброс/облако плазмы. Если направлено к Земле — шанс бури выше."
                     else
-                        "Look for Earth-directed ejections and dense bright clouds."
-                )
-                1 -> Triple(
-                    strings.sunspots,
-                    SpaceWeatherApi.URL_SUN_SPOTS,
-                    if (isRu)
-                        "Чем больше/сложнее область — тем выше шанс вспышек."
+                        "Look for ejections/plasma clouds. Earth-directed events raise storm chances."
+                }
+                1 -> {
+                    title = strings.sunspots
+                    url = SpaceWeatherApi.URL_SUN_SPOTS
+                    hint = if (isRu)
+                        "Большие/сложные области чаще дают вспышки."
                     else
-                        "Larger/complex regions generally imply higher flare potential."
-                )
-                else -> Triple(
-                    strings.auroraOval,
-                    SpaceWeatherApi.URL_AURORA_OVAL,
-                    if (isRu)
-                        "Показывает примерную область вероятного сияния (модель)."
+                        "Large/complex regions tend to flare more."
+                }
+                else -> {
+                    title = strings.auroraOval
+                    url = SpaceWeatherApi.URL_AURORA_OVAL
+                    hint = if (isRu)
+                        "Модель вероятности сияния по широтам (примерно)."
                     else
-                        "Shows approximate auroral probability region (model-based)."
-                )
+                        "Model-based aurora probability by latitude (approx)."
+                }
             }
 
             SunImageCard(
@@ -149,7 +152,8 @@ fun SunScreen(
                 title = title,
                 url = url,
                 hint = hint,
-                onTap = { onOpenImage(title, url) } // пока просто «тап»
+                // пока “просто картинками” — но тап оставляем на будущее
+                onTap = { onOpenImage(title, url) }
             )
         }
 
@@ -163,8 +167,6 @@ private fun SunTabs(
     selected: Int,
     onSelect: (Int) -> Unit
 ) {
-    val c = LocalCosmosTheme.current.colors
-
     GlassCard(Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(10.dp),
