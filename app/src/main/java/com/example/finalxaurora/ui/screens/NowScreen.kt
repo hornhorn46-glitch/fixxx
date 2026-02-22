@@ -9,16 +9,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,11 +32,10 @@ import com.example.finalxaurora.ui.components.AuroraBackground
 import com.example.finalxaurora.ui.components.BFieldCompass
 import com.example.finalxaurora.ui.components.GaugeZone
 import com.example.finalxaurora.ui.components.GlassCard
-import com.example.finalxaurora.ui.components.ModeToggle
+import com.example.finalxaurora.ui.components.ModeIconButton
 import com.example.finalxaurora.ui.components.PixelFrog
 import com.example.finalxaurora.ui.components.PremiumGauge
 import com.example.finalxaurora.ui.components.SimplePullToRefresh
-import com.example.finalxaurora.ui.components.CosmosTopBar
 import com.example.finalxaurora.ui.strings.AppStrings
 import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 import com.example.finalxaurora.ui.vm.SpaceWeatherState
@@ -68,17 +70,34 @@ fun NowScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
+                .padding(WindowInsets.statusBars.asPaddingValues())
                 .padding(horizontal = 14.dp)
         ) {
-            // Без экспериментальных API: используем ваш стабильный CosmosTopBar
-            CosmosTopBar(
-                title = "FinalXAurora",
-                onBack = null,
-                actions = {
-                    ModeToggle(mode = mode, onToggle = onModeChange)
+            // читаемая верхняя панель поверх фона
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = "FinalXAurora",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        actions = {
+                            ModeIconButton(mode = mode, onToggle = onModeChange)
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Transparent,
+                            titleContentColor = c.textPrimary
+                        )
+                    )
                 }
-            )
+            }
 
             Spacer(Modifier.height(10.dp))
 
@@ -146,6 +165,7 @@ fun NowScreen(
                     modifier = Modifier.weight(1f)
                 )
 
+                // Bz: в Gauge мы инвертируем стрелку (если параметр уже добавлен в Gauge/PremiumGauge)
                 PremiumGauge(
                     title = strings.bz,
                     valueText = Format.unit(Format.oneDecOrDash(bzNow), "nT"),
@@ -158,8 +178,8 @@ fun NowScreen(
                         GaugeZone(0.40f, 0.60f, c.ok),
                         GaugeZone(0.60f, 1f, c.warning)
                     ),
-                    modifier = Modifier.weight(1f),
-                    invertNeedle = true
+                    invertNeedle = true,
+                    modifier = Modifier.weight(1f)
                 )
             }
 
@@ -212,6 +232,7 @@ fun NowScreen(
                     }
                 }
 
+                // Лягушка (если “не видно” — это будет уже вопрос позиции/альфы в PixelFrog.kt)
                 PixelFrog()
             }
 
