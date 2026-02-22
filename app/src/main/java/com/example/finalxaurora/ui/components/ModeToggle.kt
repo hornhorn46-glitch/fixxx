@@ -2,17 +2,21 @@ package com.example.finalxaurora.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.finalxaurora.domain.AppMode
 import com.example.finalxaurora.ui.theme.LocalCosmosTheme
@@ -24,44 +28,29 @@ fun ModeToggle(
     modifier: Modifier = Modifier
 ) {
     val c = LocalCosmosTheme.current.colors
-    val t by animateFloatAsState(
-        targetValue = if (mode == AppMode.SUN) 1f else 0f,
-        animationSpec = tween(420),
-        label = "modeToggle"
+    val icon = if (mode == AppMode.SUN) Icons.Outlined.WbSunny else Icons.Outlined.Public
+
+    val pressScale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(220),
+        label = "modeBtnScale"
     )
 
     Box(
         modifier = modifier
-            .width(64.dp)
-            .height(30.dp)
+            .size(38.dp)
+            .scale(pressScale)
+            .background(c.glass.copy(alpha = 0.28f), CircleShape)
             .clickable {
-                onToggle(if (mode == AppMode.EARTH) AppMode.SUN else AppMode.EARTH)
-            }
+                onToggle(if (mode == AppMode.SUN) AppMode.EARTH else AppMode.SUN)
+            },
+        contentAlignment = Alignment.Center
     ) {
-        Canvas(Modifier.matchParentSize()) {
-            val w = size.width
-            val h = size.height
-            val r = h / 2f
-            drawRoundRect(
-                color = c.glassStroke.copy(alpha = 0.60f),
-                cornerRadius = CornerRadius(r, r)
-            )
-            drawRoundRect(
-                color = c.glass.copy(alpha = 0.55f),
-                cornerRadius = CornerRadius(r, r),
-                size = Size(w, h)
-            )
-
-            val knob = h - 6f
-            val x = lerp(3f, w - knob - 3f, t)
-            drawRoundRect(
-                color = c.accent.copy(alpha = 0.85f),
-                topLeft = Offset(x, 3f),
-                size = Size(knob, knob),
-                cornerRadius = CornerRadius(knob / 2f, knob / 2f)
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = "Mode",
+            tint = c.textPrimary.copy(alpha = 0.92f),
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
-
-private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
