@@ -1,16 +1,22 @@
 package com.example.finalxaurora.ui
 
+import android.app.Activity
+import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.finalxaurora.domain.AppLanguage
 import com.example.finalxaurora.domain.AppMode
 import com.example.finalxaurora.ui.screens.FullImageScreen
@@ -22,188 +28,192 @@ import com.example.finalxaurora.ui.strings.AppStrings
 import com.example.finalxaurora.ui.theme.CosmosTheme
 import com.example.finalxaurora.ui.vm.SpaceWeatherViewModel
 import com.example.finalxaurora.ui.vm.VmFactory
-import com.example.finalxaurora.data.SettingsStore
-
-/**
- * Custom navigation stack (no navigation-compose).
- * Fix: never call stack.last() when stack can be empty.
- */
-private sealed interface Screen {
-    data object Now : Screen
-    data object Graphs : Screen
-    data object Sun : Screen
-    data object Settings : Screen
-    data class FullImage(val title: String, val url: String) : Screen
-}
+import com.example.finalxaurora.util.SettingsStore
+import kotlinx.coroutines.launch
 
 @Composable
 fun App(
     vmFactory: VmFactory,
     settings: SettingsStore
 ) {
-    val vm: SpaceWeatherViewModel = vmFactory.spaceWeather()
-
-    // App settings (these are intentionally accessed in a defensive way)
-    val mode: AppMode = settings.loadMode()
-    val language: AppLanguage = settings.loadLanguage()
-
-    val strings: AppStrings = AppStrings.forLanguage(language)
-
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // ---- Navigation stack ----
+    var mode by remember { mutableStateOf(settings.loadMode()) }
+    var language by remember { mutableStateOf(settings.loadLanguage()) }
+    val strings = remember(language) { AppStrings.forLanguage(language) }
+
+    val vm: SpaceWeatherViewModel = viewModel(factory = vmFactory)
+    val state by vm.state
+
+    // --- Simple in-app navigation (stack) ---
+    sealed interface Screen {
+        data object Now : Screen
+        data object Graphs : Screen
+        data object Settings : Screen
+        data object Sun : Screen
+        data class FullImage(val title: String, val url: String) : Screen
+    }
+
     val stack = remember { mutableStateListOf<Screen>() }
 
-    // Ensure non-empty stack (THIS fixes the crash)
+    fun homeForMode(m: AppMode): Screen = if (m == AppMode.SUN) Screen.Sun else Screen.Now
+
+    // Ensure non-empty stack (fixes "List is empty" crash)
     LaunchedEffect(Unit) {
         if (stack.isEmpty()) {
-            // стартовый экран можно выбирать как угодно:
-            // - если mode == SUN → Sun
-            // - иначе → Now
-            stack.add(if (mode == AppMode.SUN) Screen.Sun else Screen.Now)
+            stack.add(homeForMode(mode))
         }
     }
 
-    // Always read current screen safely
-    val current: Screen = stack.lastOrNull() ?: Screen.Now
+    fun resetToHome() {
+        val home = homeForMode(mode)
+        stack.clear()
+        stack.add(home)
+    }
 
-    // Double-back-to-exit logic (only on root)
-    var lastBackAt by remember { mutableLongStateOf(0L) }
+    fun push(screen: Screen) {
+        stack.add(screen)
+    }
 
-    fun popOrExit() {
-        if (stack.size > 1) {
+    fun pop(): Boolean {
+        return if (stack.size > 1) {
             stack.removeAt(stack.lastIndex)
+            true
         } else {
-            val now = System.currentTimeMillis()
-            if (now - lastBackAt < 1600L) {
-                // Let Activity handle finish (BackHandler will fall through)
-                // We do nothing here: caller should not intercept.
-            } else {
-                lastBackAt = now
-                // If you have strings.pressBackAgain — use it; otherwise fallback.
-                // We avoid compile issues by using safe text:
-                val msg = runCatching { strings.pressBackAgain }.getOrNull()
-                    ?: "Press back again to exit"
-                // show snackbar
-                // (must be launched, because showSnackbar is suspend)
-                vm.launchSnack(snackbarHostState, msg)
+            false
+        }
+    }
+
+    // If mode changes, move to соответствующий home
+    LaunchedEffect(mode) {
+        if (stack.isEmpty()) {
+            stack.add(homeForMode(mode))
+        } else {
+            // аккуратно: оставляем стек валидным
+            val desiredHome = homeForMode(mode)
+            if (stack.first() != desiredHome) {
+                stack.clear()
+                stack.add(desiredHome)
             }
         }
     }
 
-    // Root BackHandler (only intercept when we actually want)
-    BackHandler(enabled = true) {
-        if (stack.size > 1) {
-            stack.removeAt(stack.lastIndex)
-        } else {
+    // Double-back-to-exit
+    var lastBackMs by remember { mutableLongStateOf(0L) }
+
+    fun finishApp(ctx: Context) {
+        (ctx as? Activity)?.finish()
+    }
+
+    BackHandler {
+        val popped = pop()
+        if (!popped) {
             val now = System.currentTimeMillis()
-            if (now - lastBackAt < 1600L) {
-                // allow system back to close activity
-                // by disabling interception effectively:
-                // simplest: do nothing and rely on Activity default? — but BackHandler intercepts.
-                // so we just call finish via vmFactory hook if you have it;
-                // if нет — то лучше отключить BackHandler в Activity.
-                vmFactory.finishActivity()
+            if (now - lastBackMs < 1800L) {
+                finishApp(context)
             } else {
-                lastBackAt = now
-                val msg = runCatching { strings.pressBackAgain }.getOrNull()
-                    ?: "Press back again to exit"
-                vm.launchSnack(snackbarHostState, msg)
+                lastBackMs = now
+                scope.launch {
+                    snackbarHostState.showSnackbar(strings.backAgainToExit)
+                }
             }
         }
     }
 
-    // Theme must use CURRENT mode and score
-    val state by vm.state
-    val auroraScore = state.prediction.score
+    // App theme wrapper
+    CosmosTheme(mode = mode, auroraScore = state.prediction.score) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { _ ->
+            val screen = stack.lastOrNull() ?: homeForMode(mode)
 
-    CosmosTheme(mode = mode, auroraScore = auroraScore) {
-        Surface {
-            when (current) {
-                Screen.Now -> {
+            when (screen) {
+                is Screen.Now -> {
                     NowScreen(
                         strings = strings,
                         mode = mode,
                         onModeChange = { newMode ->
+                            mode = newMode
                             settings.saveMode(newMode)
-                            // keep user on a meaningful root when switching modes
-                            stack.clear()
-                            stack.add(if (newMode == AppMode.SUN) Screen.Sun else Screen.Now)
+                            resetToHome()
                         },
                         state = state,
                         onRefresh = { vm.refresh() },
-                        onOpenGraphs = { stack.add(Screen.Graphs) },
-                        onOpenSun = { stack.add(Screen.Sun) },
-                        onOpenSettings = { stack.add(Screen.Settings) },
+                        onOpenGraphs = { push(Screen.Graphs) },
+                        onOpenSun = {
+                            mode = AppMode.SUN
+                            settings.saveMode(mode)
+                            resetToHome()
+                        },
+                        onOpenSettings = { push(Screen.Settings) },
                         snackbarHostState = snackbarHostState
                     )
                 }
 
-                Screen.Graphs -> {
+                is Screen.Graphs -> {
                     GraphsScreen(
                         strings = strings,
                         mode = mode,
                         onModeChange = { newMode ->
+                            mode = newMode
                             settings.saveMode(newMode)
-                            // allow switch even here
-                            stack.clear()
-                            stack.add(if (newMode == AppMode.SUN) Screen.Sun else Screen.Now)
+                            resetToHome()
                         },
                         state = state,
-                        onBack = { if (stack.size > 1) stack.removeAt(stack.lastIndex) },
+                        onBack = { pop() },
                         snackbarHostState = snackbarHostState
                     )
                 }
 
-                Screen.Sun -> {
-                    SunScreen(
-                        strings = strings,
-                        mode = mode,
-                        onModeChange = { newMode ->
-                            settings.saveMode(newMode)
-                            stack.clear()
-                            stack.add(if (newMode == AppMode.SUN) Screen.Sun else Screen.Now)
-                        },
-                        onOpenImage = { title, url -> stack.add(Screen.FullImage(title, url)) },
-                        onBack = { if (stack.size > 1) stack.removeAt(stack.lastIndex) },
-                        snackbarHostState = snackbarHostState
-                    )
-                }
-
-                Screen.Settings -> {
+                is Screen.Settings -> {
                     SettingsScreen(
                         strings = strings,
                         mode = mode,
                         onModeChange = { newMode ->
+                            mode = newMode
                             settings.saveMode(newMode)
-                            // stay on settings, but update theme next recomposition
+                            resetToHome()
                         },
                         language = language,
                         onLanguageChange = { newLang ->
+                            language = newLang
                             settings.saveLanguage(newLang)
-                            // rebuild UI by forcing a root reset
-                            stack.clear()
-                            stack.add(if (settings.loadMode() == AppMode.SUN) Screen.Sun else Screen.Now)
                         },
-                        onBack = { if (stack.size > 1) stack.removeAt(stack.lastIndex) },
+                        onBack = { pop() },
+                        snackbarHostState = snackbarHostState
+                    )
+                }
+
+                is Screen.Sun -> {
+                    SunScreen(
+                        strings = strings,
+                        mode = mode,
+                        onModeChange = { newMode ->
+                            mode = newMode
+                            settings.saveMode(newMode)
+                            resetToHome()
+                        },
+                        onOpenImage = { title, url ->
+                            push(Screen.FullImage(title, url))
+                        },
+                        onBack = { pop() },
                         snackbarHostState = snackbarHostState
                     )
                 }
 
                 is Screen.FullImage -> {
                     FullImageScreen(
-                        title = current.title,
-                        url = current.url,
+                        title = screen.title,
+                        url = screen.url,
                         strings = strings,
                         mode = mode,
-                        auroraScore = auroraScore,
-                        onBack = { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
+                        auroraScore = state.prediction.score,
+                        onBack = { pop() }
                     )
                 }
             }
-
-            // Host snackbar above everything
-            SnackbarHost(hostState = snackbarHostState)
         }
     }
 }
