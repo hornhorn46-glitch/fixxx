@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -14,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
 @Composable
@@ -32,13 +34,14 @@ fun PixelFrog(
     )
 
     Canvas(
-        modifier = modifier.offset { IntOffset(0, (bob * 2.5f).roundToInt()) }
+        modifier = modifier
+            .size(36.dp) // ключевое: иначе Canvas = 0x0 и “лягушки нет”
+            .offset { IntOffset(0, (bob * 2.5f).roundToInt()) }
     ) {
         val s = size.minDimension
         if (s <= 0f) return@Canvas
 
         val px = s / 12f
-
         fun dot(x: Int, y: Int, alpha: Float) {
             drawCircle(
                 color = Color.White.copy(alpha = alpha),
@@ -47,7 +50,6 @@ fun PixelFrog(
             )
         }
 
-        // пиксельный силуэт (минимальный, но живой)
         for (x in 3..8) dot(x, 6, 0.22f)
         for (x in 4..7) dot(x, 7, 0.22f)
         dot(4, 5, 0.22f); dot(7, 5, 0.22f)
