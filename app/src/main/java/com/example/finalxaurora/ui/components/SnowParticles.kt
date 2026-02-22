@@ -1,76 +1,62 @@
 package com.example.finalxaurora.ui.components
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import kotlin.math.abs
+import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 import kotlin.random.Random
 
-private data class SnowP(
-    val x: Float,
-    val y: Float,
+private data class SnowParticle(
+    var x: Float,
+    var y: Float,
     val r: Float,
     val speedY: Float,
     val driftX: Float,
-    val a: Float
+    val alpha: Float
 )
 
 @Composable
 fun SnowParticles(
     modifier: Modifier = Modifier,
-    maxParticles: Int = 28,
-    baseAlpha: Float = 0.18f
+    count: Int = 60 // было меньше — делаем заметнее
 ) {
-    val particles = remember(maxParticles) {
+    val c = LocalCosmosTheme.current.colors
+
+    val particles = remember {
         val rnd = Random(7)
-        List(maxParticles) {
-            SnowP(
+        List(count) {
+            SnowParticle(
                 x = rnd.nextFloat(),
                 y = rnd.nextFloat(),
-                r = 0.55f + rnd.nextFloat() * 1.15f,
-                speedY = 0.06f + rnd.nextFloat() * 0.12f,
-                driftX = (rnd.nextFloat() - 0.5f) * 0.08f,
-                a = (baseAlpha * (0.55f + rnd.nextFloat() * 0.65f)).coerceIn(0.06f, 0.40f)
+                r = 0.8f + rnd.nextFloat() * 1.8f,
+                speedY = 0.06f + rnd.nextFloat() * 0.10f,
+                driftX = (rnd.nextFloat() - 0.5f) * 0.05f,
+                alpha = 0.08f + rnd.nextFloat() * 0.10f
             )
-        }
+        }.toMutableList()
     }
 
-    val inf = rememberInfiniteTransition(label = "snowInf")
-    val t = inf.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 9000, easing = LinearEasing)
-        ),
-        label = "snowT"
-    ).value
-
-    Canvas(modifier = modifier) {
+    // лёгкая “жизнь” без тяжёлых анимаций: используем кадры Canvas (простая интеграция)
+    Canvas(modifier = modifier.fillMaxSize()) {
         val w = size.width
         val h = size.height
-        if (w <= 0f || h <= 0f) return@Canvas
-
-        // “ветер” — очень лёгкий
-        val wind = (t - 0.5f) * 2f
 
         particles.forEach { p ->
-            val yy = ((p.y + t * p.speedY) % 1f) * h
-            val xx = ((p.x + wind * p.driftX) % 1f) * w
+            p.y += p.speedY * 0.9f
+            p.x += p.driftX
 
-            // лёгкое мерцание без дорогостоящих эффектов
-            val pulse = 0.88f + 0.12f * (1f - abs(wind))
+            if (p.y > 1.1f) p.y = -0.1f
+            if (p.x < -0.1f) p.x = 1.1f
+            if (p.x > 1.1f) p.x = -0.1f
+
             drawCircle(
-                color = Color.White.copy(alpha = (p.a * pulse).coerceIn(0f, 0.45f)),
+                color = c.textPrimary.copy(alpha = p.alpha),
                 radius = p.r,
-                center = Offset(xx, yy)
+                center = Offset(p.x * w, p.y * h)
             )
         }
     }
