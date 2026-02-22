@@ -75,22 +75,29 @@ fun NowScreen(
 
     if (help != null) {
         val (title, body) = when (help!!) {
-            HelpTopic.KP -> strings.helpKpTitle to strings.helpKpBody
-            HelpTopic.WIND -> strings.helpWindTitle to strings.helpWindBody
-            HelpTopic.BT -> strings.helpBtTitle to strings.helpBtBody
-            HelpTopic.BFIELD -> strings.helpBFieldTitle to strings.helpBFieldBody
+            HelpTopic.KP -> strings.kpIndex to
+                "Kp — индекс геомагнитной активности (0–9). Чем выше Kp, тем выше шанс яркого сияния и тем южнее оно видно."
+            HelpTopic.WIND -> strings.windSpeed to
+                "Скорость солнечного ветра влияет на «давление» на магнитосферу. Выше скорость — чаще сильнее возмущения."
+            HelpTopic.BT -> "Bt" to
+                "Bt — общая сила магнитного поля (по Bx и Bz). Обычно: выше Bt = больше энергии в системе."
+            HelpTopic.BFIELD -> strings.bField to
+                "Компас показывает направление поля: по горизонтали Bx, по вертикали Bz.\n" +
+                "Когда Bz «южный» (отрицательный), сияние часто усиливается."
         }
 
+        // FIX: принудительно делаем текст тёмным/контрастным под стекло
         AlertDialog(
             onDismissRequest = { help = null },
-            title = { Text(title) },
-            text = { Text(body) },
+            title = { Text(text = title, color = c.textPrimary) },
+            text = { Text(text = body, color = c.textPrimary.copy(alpha = 0.92f)) },
             confirmButton = {
-                TextButton(onClick = { help = null }) { Text(strings.ok) }
+                TextButton(onClick = { help = null }) {
+                    Text(text = strings.ok, color = c.accent)
+                }
             },
-            containerColor = c.glass.copy(alpha = 0.92f),
-            titleContentColor = c.textPrimary,
-            textContentColor = c.textSecondary
+            containerColor = c.glass.copy(alpha = 0.95f),
+            tonalElevation = 0.dp
         )
     }
 
@@ -115,7 +122,7 @@ fun NowScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = strings.appName,
+                    text = "FinalXAurora",
                     color = c.textPrimary,
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 1,
@@ -151,15 +158,11 @@ fun NowScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = strings.auroraScore,
-                            color = c.textSecondary,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = { /* позже */ }) {
+                        Text(text = strings.auroraScore, color = c.textSecondary, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { /* позже можно сделать help для score */ }) {
                             Icon(
                                 imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                contentDescription = strings.info,
+                                contentDescription = "Info",
                                 tint = c.textSecondary
                             )
                         }
@@ -195,7 +198,7 @@ fun NowScreen(
                             IconButton(onClick = { help = HelpTopic.KP }) {
                                 Icon(
                                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = strings.info,
+                                    contentDescription = "Info",
                                     tint = c.textSecondary
                                 )
                             }
@@ -225,7 +228,7 @@ fun NowScreen(
                             IconButton(onClick = { help = HelpTopic.WIND }) {
                                 Icon(
                                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = strings.info,
+                                    contentDescription = "Info",
                                     tint = c.textSecondary
                                 )
                             }
@@ -251,11 +254,11 @@ fun NowScreen(
                 GlassCard(modifier = Modifier.weight(1f)) {
                     Column(Modifier.padding(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(strings.bt, color = c.textSecondary, modifier = Modifier.weight(1f))
+                            Text("Bt", color = c.textSecondary, modifier = Modifier.weight(1f))
                             IconButton(onClick = { help = HelpTopic.BT }) {
                                 Icon(
                                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = strings.info,
+                                    contentDescription = "Info",
                                     tint = c.textSecondary
                                 )
                             }
@@ -285,11 +288,11 @@ fun NowScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(strings.bFieldLong, color = c.textSecondary, modifier = Modifier.weight(1f))
+                Text(strings.bField, color = c.textSecondary, modifier = Modifier.weight(1f))
                 IconButton(onClick = { help = HelpTopic.BFIELD }) {
                     Icon(
                         imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                        contentDescription = strings.info,
+                        contentDescription = "Info",
                         tint = c.textSecondary
                     )
                 }
