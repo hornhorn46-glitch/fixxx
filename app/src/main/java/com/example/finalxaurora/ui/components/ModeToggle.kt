@@ -1,121 +1,119 @@
 package com.example.finalxaurora.ui.components
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.finalxaurora.domain.AppMode
 import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 import kotlin.math.cos
-import kotlin.math.min
 import kotlin.math.sin
 
 @Composable
 fun ModeToggle(
     mode: AppMode,
     onToggle: (AppMode) -> Unit,
-    large: Boolean = false,
-    modifier: Modifier = Modifier
+    large: Boolean = false
 ) {
     val c = LocalCosmosTheme.current.colors
 
-    val size: Dp = if (large) 46.dp else 34.dp
-    val borderW: Dp = if (large) 2.dp else 1.5.dp
+    val size = if (large) 46.dp else 38.dp
+    val icon = if (large) 22.dp else 18.dp
+    val borderW = if (large) 1.6.dp else 1.2.dp
+
+    val next = if (mode == AppMode.EARTH) AppMode.SUN else AppMode.EARTH
 
     Box(
-        modifier = modifier
+        modifier = Modifier
             .size(size)
-            .clip(CircleShape)
-            .background(c.glass.copy(alpha = 0.22f))
-            .border(borderW, c.accent.copy(alpha = 0.65f), CircleShape)
-            .clickable {
-                val next = if (mode == AppMode.EARTH) AppMode.SUN else AppMode.EARTH
-                onToggle(next)
-            },
-        contentAlignment = Alignment.Center
+            .border(
+                width = borderW,
+                color = c.textSecondary.copy(alpha = 0.40f),
+                shape = CircleShape
+            )
+            .clickable { onToggle(next) }
+            .padding(7.dp)
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val s = min(size.width, size.height)
-            val cx = size.width / 2f
-            val cy = size.height / 2f
-            val r = s * 0.30f
-
-            // subtle inner glow
+        Canvas(modifier = Modifier.size(icon)) {
+            // общий “бейдж”
             drawCircle(
-                color = c.accent.copy(alpha = 0.10f),
-                radius = r * 1.55f,
-                center = Offset(cx, cy)
+                color = c.glass.copy(alpha = 0.55f),
+                radius = size.minDimension * 0.50f,
+                center = center
             )
 
-            if (mode == AppMode.EARTH) {
-                // Earth: circle + a couple of "continents"
+            if (mode == AppMode.SUN) {
+                // SUN: круг + лучи
+                val r = size.minDimension * 0.22f
                 drawCircle(
-                    color = c.textPrimary.copy(alpha = 0.10f),
-                    radius = r * 1.25f,
-                    center = Offset(cx, cy)
-                )
-                drawCircle(
-                    color = c.textPrimary.copy(alpha = 0.35f),
-                    radius = r * 1.25f,
-                    center = Offset(cx, cy),
-                    style = Stroke(width = 2.4f)
+                    color = c.accent.copy(alpha = 0.95f),
+                    radius = r,
+                    center = center
                 )
 
-                // continents (simple blobs)
-                drawCircle(
-                    color = c.accent.copy(alpha = 0.55f),
-                    radius = r * 0.38f,
-                    center = Offset(cx - r * 0.35f, cy - r * 0.10f)
-                )
-                drawCircle(
-                    color = c.accent.copy(alpha = 0.45f),
-                    radius = r * 0.30f,
-                    center = Offset(cx + r * 0.25f, cy + r * 0.18f)
-                )
-            } else {
-                // Sun: circle + rays
-                drawCircle(
-                    color = c.accent.copy(alpha = 0.22f),
-                    radius = r * 1.05f,
-                    center = Offset(cx, cy)
-                )
-                drawCircle(
-                    color = c.accent.copy(alpha = 0.85f),
-                    radius = r * 1.05f,
-                    center = Offset(cx, cy),
-                    style = Stroke(width = 2.4f)
-                )
-
-                val rays = 8
-                val inner = r * 1.28f
-                val outer = r * 1.62f
-                for (i in 0 until rays) {
-                    val a = (i.toFloat() / rays.toFloat()) * (Math.PI.toFloat() * 2f)
-                    val dx = cos(a)
-                    val dy = sin(a)
-                    val p1 = Offset(cx + dx * inner, cy + dy * inner)
-                    val p2 = Offset(cx + dx * outer, cy + dy * outer)
+                val rayR1 = r * 1.55f
+                val rayR2 = r * 2.25f
+                for (i in 0 until 8) {
+                    val a = (i * (Math.PI * 2.0) / 8.0).toFloat()
+                    val s = Offset(
+                        x = center.x + cos(a) * rayR1,
+                        y = center.y + sin(a) * rayR1
+                    )
+                    val e = Offset(
+                        x = center.x + cos(a) * rayR2,
+                        y = center.y + sin(a) * rayR2
+                    )
                     drawLine(
-                        color = c.accent.copy(alpha = 0.75f),
-                        start = p1,
-                        end = p2,
-                        strokeWidth = 3.6f,
+                        color = c.accent.copy(alpha = 0.85f),
+                        start = s,
+                        end = e,
+                        strokeWidth = (size.minDimension * 0.10f),
                         cap = StrokeCap.Round
                     )
                 }
+            } else {
+                // EARTH: круг + “континенты” (упрощённо)
+                val r = size.minDimension * 0.30f
+                drawCircle(
+                    color = c.ok.copy(alpha = 0.95f),
+                    radius = r,
+                    center = center
+                )
+                // “океан”
+                drawCircle(
+                    color = Color(0xFF0A2A5E).copy(alpha = 0.55f),
+                    radius = r * 0.92f,
+                    center = center
+                )
+                // “материки” 2 шт
+                drawCircle(
+                    color = c.ok.copy(alpha = 0.85f),
+                    radius = r * 0.24f,
+                    center = Offset(center.x - r * 0.22f, center.y - r * 0.10f)
+                )
+                drawCircle(
+                    color = c.ok.copy(alpha = 0.75f),
+                    radius = r * 0.18f,
+                    center = Offset(center.x + r * 0.25f, center.y + r * 0.15f)
+                )
+
+                // обводка шара
+                drawCircle(
+                    color = c.textSecondary.copy(alpha = 0.30f),
+                    radius = r,
+                    center = center,
+                    style = Stroke(width = size.minDimension * 0.08f)
+                )
             }
         }
     }
