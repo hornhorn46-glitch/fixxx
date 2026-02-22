@@ -4,24 +4,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,32 +66,27 @@ fun NowScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(WindowInsets.statusBars.asPaddingValues())
+                .statusBarsPadding()
                 .padding(horizontal = 14.dp)
         ) {
-            // читаемая верхняя панель поверх фона
+            // Top bar (без experimental Material3 API)
             GlassCard(modifier = Modifier.fillMaxWidth()) {
-                androidx.compose.foundation.layout.Box(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = "FinalXAurora",
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        },
-                        actions = {
-                            ModeIconButton(mode = mode, onToggle = onModeChange)
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Transparent,
-                            titleContentColor = c.textPrimary
-                        )
+                    Text(
+                        text = "FinalXAurora",
+                        color = c.textPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleLarge
                     )
+
+                    ModeIconButton(mode = mode, onToggle = onModeChange)
                 }
             }
 
@@ -165,7 +156,6 @@ fun NowScreen(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Bz: в Gauge мы инвертируем стрелку (если параметр уже добавлен в Gauge/PremiumGauge)
                 PremiumGauge(
                     title = strings.bz,
                     valueText = Format.unit(Format.oneDecOrDash(bzNow), "nT"),
@@ -232,7 +222,6 @@ fun NowScreen(
                     }
                 }
 
-                // Лягушка (если “не видно” — это будет уже вопрос позиции/альфы в PixelFrog.kt)
                 PixelFrog()
             }
 
