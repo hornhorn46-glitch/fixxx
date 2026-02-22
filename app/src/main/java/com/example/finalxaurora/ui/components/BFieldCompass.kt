@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -14,11 +15,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 import com.example.finalxaurora.util.Format
-import kotlin.math.atan2
-import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
-import kotlin.math.sin
 
 @Composable
 fun BFieldCompass(
@@ -32,7 +30,7 @@ fun BFieldCompass(
     GlassCard(modifier = modifier) {
         Column(Modifier.padding(12.dp)) {
             if (title.isNotBlank()) {
-                androidx.compose.material3.Text(text = title, color = c.textSecondary)
+                Text(text = title, color = c.textSecondary)
             }
 
             Box(
@@ -47,39 +45,23 @@ fun BFieldCompass(
                     val cx = w * 0.50f
                     val cy = h * 0.52f
 
-                    // стекло ярче
+                    // Основа - чуть ярче
                     drawCircle(
-                        color = c.glass.copy(alpha = 0.30f),
+                        color = c.glass.copy(alpha = 0.34f),
                         radius = r * 1.25f,
                         center = Offset(cx, cy)
                     )
                     drawCircle(
-                        color = c.textSecondary.copy(alpha = 0.18f),
+                        color = c.textPrimary.copy(alpha = 0.20f),
                         radius = r * 1.25f,
                         center = Offset(cx, cy),
-                        style = Stroke(width = 2.2f)
+                        style = Stroke(width = 2.4f)
                     )
 
-                    // зоны вокруг "вниз" (отрицательный Bz вниз)
-                    fun sector(alpha: Float, startDeg: Float, sweepDeg: Float) {
-                        drawArc(
-                            color = c.danger.copy(alpha = alpha),
-                            startAngle = startDeg,
-                            sweepAngle = sweepDeg,
-                            useCenter = true,
-                            topLeft = Offset(cx - r * 1.25f, cy - r * 1.25f),
-                            size = androidx.compose.ui.geometry.Size(r * 2.5f, r * 2.5f)
-                        )
-                    }
-
-                    // Упрощённо: подкраска по окружности около направления "вниз"
-                    // Красный узко, оранжевый шире, зелёный ещё шире.
-                    // (Если ты хочешь ровно как ранее — скажи, верну точные углы.)
-                    // 0° — вправо, 90° — вниз (в Canvas Compose это обычно так),
-                    // поэтому "вниз" = 90°.
+                    // зоны вокруг "вниз" (компас риска по Bz)
                     val down = 90f
                     drawArc(
-                        color = c.ok.copy(alpha = 0.16f),
+                        color = c.ok.copy(alpha = 0.18f),
                         startAngle = down - 65f,
                         sweepAngle = 130f,
                         useCenter = true,
@@ -87,7 +69,7 @@ fun BFieldCompass(
                         size = androidx.compose.ui.geometry.Size(r * 2.5f, r * 2.5f)
                     )
                     drawArc(
-                        color = c.warning.copy(alpha = 0.18f),
+                        color = c.warning.copy(alpha = 0.22f),
                         startAngle = down - 40f,
                         sweepAngle = 80f,
                         useCenter = true,
@@ -95,7 +77,7 @@ fun BFieldCompass(
                         size = androidx.compose.ui.geometry.Size(r * 2.5f, r * 2.5f)
                     )
                     drawArc(
-                        color = c.danger.copy(alpha = 0.20f),
+                        color = c.danger.copy(alpha = 0.26f),
                         startAngle = down - 20f,
                         sweepAngle = 40f,
                         useCenter = true,
@@ -116,41 +98,36 @@ fun BFieldCompass(
                     val ex = cx + nx * needleLen
                     val ey = cy + ny * needleLen
 
-                    // свечения/яркость стрелки
+                    // Свечение + основная линия (сильно ярче, чем было)
                     drawLine(
-                        color = c.accent.copy(alpha = 0.25f),
+                        color = c.accent.copy(alpha = 0.30f),
                         start = Offset(cx, cy),
                         end = Offset(ex, ey),
-                        strokeWidth = 14f,
+                        strokeWidth = 18f,
                         cap = StrokeCap.Round
                     )
                     drawLine(
-                        color = c.accent.copy(alpha = 0.92f),
+                        color = c.accent.copy(alpha = 0.98f),
                         start = Offset(cx, cy),
                         end = Offset(ex, ey),
-                        strokeWidth = 6.2f,
+                        strokeWidth = 7.4f,
                         cap = StrokeCap.Round
                     )
 
-                    // маленькая “головка”
                     drawCircle(
-                        color = c.accent.copy(alpha = 0.95f),
-                        radius = 7.5f,
+                        color = c.accent.copy(alpha = 0.98f),
+                        radius = 8.2f,
                         center = Offset(ex, ey)
                     )
-
-                    // подпись
-                    val angle = atan2(ny, nx)
-                    val angleDeg = (angle * 180f / Math.PI.toFloat())
-                    drawCircle(color = c.textSecondary.copy(alpha = 0.22f), radius = 4.5f, center = Offset(cx, cy))
-
-                    // текст снизу (без лишних зависимостей)
-                    // (Если хочешь — добавим компактные подписи Bx/Bz рядом с осями)
+                    drawCircle(
+                        color = c.textPrimary.copy(alpha = 0.20f),
+                        radius = 5.0f,
+                        center = Offset(cx, cy)
+                    )
                 }
             }
 
-            // Чуть более читабельно
-            androidx.compose.material3.Text(
+            Text(
                 text = "Bx ${Format.oneDecOrDash(bx)} nT   •   Bz ${Format.oneDecOrDash(bz)} nT",
                 color = c.textSecondary
             )
