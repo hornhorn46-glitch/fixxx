@@ -4,7 +4,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -14,6 +13,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawText
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.example.finalxaurora.domain.GraphSeries
 import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 import kotlin.math.max
-import kotlin.math.min
+import kotlin.math.abs
 
 @OptIn(ExperimentalTextApi::class)
 @Composable
@@ -48,7 +48,7 @@ fun GraphCard(
                 val w = size.width
                 val h = size.height
 
-                val leftPad = 42f // место под цифры Y
+                val leftPad = 44f // место под цифры Y
                 val topPad = 10f
                 val rightPad = 10f
                 val bottomPad = 22f
@@ -68,11 +68,12 @@ fun GraphCard(
                     )
                 }
 
-                // Y labels: min/mid/max
+                // labels
                 fun yToText(v: Double): String {
-                    // компактно
-                    val s = if (kotlin.math.abs(v) >= 100) v.toInt().toString() else String.format("%.1f", v)
-                    return s
+                    return when {
+                        abs(v) >= 100 -> v.toInt().toString()
+                        else -> String.format("%.1f", v)
+                    }
                 }
 
                 val yMin = series.minY
@@ -88,7 +89,7 @@ fun GraphCard(
                             x = 0f,
                             y = y - layout.size.height / 2f
                         ),
-                        color = c.textSecondary.copy(alpha = 0.75f)
+                        color = c.textSecondary.copy(alpha = 0.78f)
                     )
                 }
 
@@ -131,7 +132,7 @@ fun GraphCard(
                     )
                 }
 
-                // Line path
+                // line path
                 val path = Path()
                 for (i in pts.indices) {
                     val x = mapX(i)
@@ -139,7 +140,6 @@ fun GraphCard(
                     if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
                 }
 
-                // draw animated (simple clip by alpha)
                 drawPath(
                     path = path,
                     color = c.accent.copy(alpha = 0.92f * appear),
