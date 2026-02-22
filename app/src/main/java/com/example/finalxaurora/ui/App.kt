@@ -21,7 +21,7 @@ import com.example.finalxaurora.ui.screens.NowScreen
 import com.example.finalxaurora.ui.screens.SettingsScreen
 import com.example.finalxaurora.ui.screens.SunScreen
 import com.example.finalxaurora.ui.strings.AppStrings
-import com.example.finalxaurora.ui.strings.StringsFactory
+import com.example.finalxaurora.ui.strings.stringsFor
 import com.example.finalxaurora.ui.theme.CosmosTheme
 import com.example.finalxaurora.ui.vm.SpaceWeatherViewModel
 import com.example.finalxaurora.ui.vm.VmFactory
@@ -46,17 +46,15 @@ fun App(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Settings state (stored in SharedPreferences via SettingsStore)
     var mode by remember { mutableStateOf(settings.loadMode()) }
     var language by remember { mutableStateOf(settings.loadLanguage()) }
-    val strings: AppStrings = remember(language) { StringsFactory.stringsFor(language) }
 
-    // ViewModel from factory (your VmFactory is a ViewModelProvider.Factory)
+    val strings: AppStrings = remember(language) { stringsFor(language) }
+
     val vm: SpaceWeatherViewModel = viewModel(factory = vmFactory)
     val state by vm.state
     val auroraScore = state.prediction.score
 
-    // Navigation stack (non-empty from start => fixes crash)
     val stack = remember {
         mutableStateListOf<Screen>().apply {
             add(if (mode == AppMode.SUN) Screen.Sun else Screen.Now)
@@ -85,12 +83,14 @@ fun App(
         (context as? Activity)?.finish()
     }
 
-    // Persist settings whenever changed
     LaunchedEffect(mode) { settings.saveMode(mode) }
     LaunchedEffect(language) { settings.saveLanguage(language) }
 
-    // Double-back exit
+    // Double-back exit (без зависимостей от AppStrings)
     var backArmed by remember { mutableStateOf(false) }
+    val backAgainMsg = remember(language) {
+        if (language == AppLanguage.RU) "Нажми ещё раз, чтобы выйти" else "Press back again to exit"
+    }
 
     BackHandler {
         val popped = pop()
@@ -100,7 +100,7 @@ fun App(
             finishApp()
         } else {
             backArmed = true
-            scope.launch { snackbarHostState.showSnackbar(strings.pressBackAgain) }
+            scope.launch { snackbarHostState.showSnackbar(backAgainMsg) }
             scope.launch {
                 delay(1600)
                 backArmed = false
@@ -123,10 +123,7 @@ fun App(
                     state = state,
                     onRefresh = { vm.refresh() },
                     onOpenGraphs = { push(Screen.Graphs) },
-                    onOpenSun = {
-                        // explicit open sun screen (button)
-                        push(Screen.Sun)
-                    },
+                    onOpenSun = { push(Screen.Sun) },
                     onOpenSettings = { push(Screen.Settings) },
                     snackbarHostState = snackbarHostState
                 )
@@ -168,12 +165,10 @@ fun App(
                     mode = mode,
                     onModeChange = { newMode ->
                         mode = newMode
-                        // settings screen stays, theme updates automatically
                     },
                     language = language,
                     onLanguageChange = { newLang ->
                         language = newLang
-                        // keep on settings; strings will update via remember(language)
                     },
                     onBack = { pop() },
                     snackbarHostState = snackbarHostState
