@@ -9,16 +9,25 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,6 +48,8 @@ import com.example.finalxaurora.ui.vm.SpaceWeatherState
 import com.example.finalxaurora.util.Format
 import kotlin.math.hypot
 
+private enum class HelpTopic { KP, WIND, BT, BFIELD }
+
 @Composable
 fun NowScreen(
     strings: AppStrings,
@@ -52,12 +63,41 @@ fun NowScreen(
     snackbarHostState: SnackbarHostState
 ) {
     val c = LocalCosmosTheme.current.colors
+    val scroll = rememberScrollState()
+
+    var help by remember { mutableStateOf<HelpTopic?>(null) }
 
     LaunchedEffect(state.errorMessage) {
         state.errorMessage?.let { snackbarHostState.showSnackbar("${strings.error}: $it") }
     }
 
     AuroraBackground(mode = mode)
+
+    if (help != null) {
+        val (title, body) = when (help!!) {
+            HelpTopic.KP -> strings.kpIndex to
+                "Kp — индекс геомагнитной активности (0–9). Чем выше Kp, тем выше шанс яркого сияния и тем южнее оно видно."
+            HelpTopic.WIND -> strings.windSpeed to
+                "Скорость солнечного ветра влияет на «давление» на магнитосферу. Выше скорость — чаще сильнее возмущения."
+            HelpTopic.BT -> "Bt" to
+                "Bt — общая сила магнитного поля (по Bx и Bz). Обычно: выше Bt = больше энергии в системе."
+            HelpTopic.BFIELD -> strings.bField to
+                "Компас показывает направление поля: по горизонтали Bx, по вертикали Bz.\n" +
+                "Важный момент: когда Bz «южный» (отрицательный), сияние часто усиливается."
+        }
+
+        AlertDialog(
+            onDismissRequest = { help = null },
+            title = { Text(title) },
+            text = { Text(body) },
+            confirmButton = {
+                TextButton(onClick = { help = null }) { Text("OK") }
+            },
+            containerColor = c.glass.copy(alpha = 0.92f),
+            titleContentColor = c.textPrimary,
+            textContentColor = c.textSecondary
+        )
+    }
 
     SimplePullToRefresh(
         enabled = true,
@@ -69,33 +109,69 @@ fun NowScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
+                .verticalScroll(scroll)
                 .padding(horizontal = 14.dp)
+                .padding(bottom = 110.dp) // гарантированный “запас” под системные панели и удобный скролл
         ) {
-            // Верхняя панель без Experimental API
+            // Top bar row (без experimental TopAppBar)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 6.dp, bottom = 10.dp),
+                    .padding(top = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "FinalXAurora",
                     color = c.textPrimary,
+                    style = MaterialTheme.typography.titleLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
-                ModeToggle(mode = mode, onToggle = onModeChange)
+
+                IconButton(onClick = onOpenGraphs) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_graph),
+                        contentDescription = strings.graphs,
+                        tint = c.textPrimary
+                    )
+                }
+                IconButton(onClick = onOpenSettings) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_settings),
+                        contentDescription = strings.settings,
+                        tint = c.textPrimary
+                    )
+                }
+
+                // Большая круглая кнопка режима (обводка/акцент — внутри ModeToggle)
+                ModeToggle(mode = mode, onToggle = onModeChange, large = true)
             }
+
+            Spacer(Modifier.height(10.dp))
 
             val score = state.prediction.score
 
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp)) {
-                    Text(text = strings.auroraScore, color = c.textSecondary)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = strings.auroraScore, color = c.textSecondary, modifier = Modifier.weight(1f))
+                        IconButton(onClick = { /* пока без отдельного хелпа для score */ }) {
+                            Icon(
+                                imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
+                                contentDescription = "Info",
+                                tint = c.textSecondary
+                            )
+                        }
+                    }
+
                     Text(
                         text = "${score}/100",
-                        color = c.accent
+                        color = c.accent,
+                        style = MaterialTheme.typography.headlineSmall
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(text = state.prediction.title, color = c.textPrimary)
@@ -107,117 +183,139 @@ fun NowScreen(
 
             val kpNow = state.kp.lastOrNull()?.kp
             val windNow = state.wind.lastOrNull()?.speed
-
             val bxNow = state.mag.lastOrNull()?.bx
             val bzNow = state.mag.lastOrNull()?.bz
-
-            // Bt считаем из Bx/Bz (компилится без поля bt)
-            val btNow: Double? =
-                if (bxNow != null && bzNow != null) hypot(bxNow, bzNow) else null
+            val btNow = if (bxNow != null && bzNow != null) hypot(bxNow, bzNow) else null
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                PremiumGauge(
-                    title = strings.kpIndex,
-                    valueText = Format.intOrDash(kpNow),
-                    value = kpNow ?: 0.0,
-                    min = 0.0,
-                    max = 9.0,
-                    zones = listOf(
-                        GaugeZone(0f, 5f / 9f, c.ok),
-                        GaugeZone(5f / 9f, 6f / 9f, c.warning),
-                        GaugeZone(6f / 9f, 7f / 9f, c.warning),
-                        GaugeZone(7f / 9f, 1f, c.danger)
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
+                GlassCard(modifier = Modifier.weight(1f)) {
+                    Column(Modifier.padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(strings.kpIndex, color = c.textSecondary, modifier = Modifier.weight(1f))
+                            IconButton(onClick = { help = HelpTopic.KP }) {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
+                                    contentDescription = "Info",
+                                    tint = c.textSecondary
+                                )
+                            }
+                        }
 
-                PremiumGauge(
-                    title = strings.windSpeed,
-                    valueText = Format.unit(Format.intOrDash(windNow), "km/s"),
-                    value = windNow ?: 350.0,
-                    min = 250.0,
-                    max = 1000.0,
-                    zones = listOf(
-                        GaugeZone(0f, (450f - 250f) / (1000f - 250f), c.ok),
-                        GaugeZone((450f - 250f) / (1000f - 250f), (600f - 250f) / (1000f - 250f), c.warning),
-                        GaugeZone((600f - 250f) / (1000f - 250f), (750f - 250f) / (1000f - 250f), c.warning),
-                        GaugeZone((750f - 250f) / (1000f - 250f), 1f, c.danger)
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
+                        PremiumGauge(
+                            title = "",
+                            valueText = Format.intOrDash(kpNow),
+                            value = kpNow ?: 0.0,
+                            min = 0.0,
+                            max = 9.0,
+                            zones = listOf(
+                                GaugeZone(0f, 5f / 9f, c.ok),
+                                GaugeZone(5f / 9f, 6f / 9f, c.warning),
+                                GaugeZone(6f / 9f, 7f / 9f, c.warning),
+                                GaugeZone(7f / 9f, 1f, c.danger)
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
 
-                PremiumGauge(
-                    title = "Bt",
-                    valueText = Format.unit(Format.oneDecOrDash(btNow), "nT"),
-                    value = btNow ?: 5.0,
-                    min = 0.0,
-                    max = 30.0,
-                    zones = listOf(
-                        GaugeZone(0f, 10f / 30f, c.ok),
-                        GaugeZone(10f / 30f, 15f / 30f, c.warning),
-                        GaugeZone(15f / 30f, 20f / 30f, c.warning),
-                        GaugeZone(20f / 30f, 1f, c.danger)
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
+                GlassCard(modifier = Modifier.weight(1f)) {
+                    Column(Modifier.padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(strings.windSpeed, color = c.textSecondary, modifier = Modifier.weight(1f))
+                            IconButton(onClick = { help = HelpTopic.WIND }) {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
+                                    contentDescription = "Info",
+                                    tint = c.textSecondary
+                                )
+                            }
+                        }
+
+                        PremiumGauge(
+                            title = "",
+                            valueText = Format.unit(Format.intOrDash(windNow), "km/s"),
+                            value = windNow ?: 350.0,
+                            min = 250.0,
+                            max = 1000.0,
+                            zones = listOf(
+                                GaugeZone(0f, (450f - 250f) / (1000f - 250f), c.ok),
+                                GaugeZone((450f - 250f) / (1000f - 250f), (600f - 250f) / (1000f - 250f), c.warning),
+                                GaugeZone((600f - 250f) / (1000f - 250f), (750f - 250f) / (1000f - 250f), c.warning),
+                                GaugeZone((750f - 250f) / (1000f - 250f), 1f, c.danger)
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                GlassCard(modifier = Modifier.weight(1f)) {
+                    Column(Modifier.padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Bt", color = c.textSecondary, modifier = Modifier.weight(1f))
+                            IconButton(onClick = { help = HelpTopic.BT }) {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
+                                    contentDescription = "Info",
+                                    tint = c.textSecondary
+                                )
+                            }
+                        }
+
+                        PremiumGauge(
+                            title = "",
+                            valueText = Format.unit(Format.oneDecOrDash(btNow), "nT"),
+                            value = btNow ?: 0.0,
+                            min = 0.0,
+                            max = 50.0,
+                            zones = listOf(
+                                GaugeZone(0f, 0.45f, c.ok),
+                                GaugeZone(0.45f, 0.70f, c.warning),
+                                GaugeZone(0.70f, 0.85f, c.warning),
+                                GaugeZone(0.85f, 1f, c.danger)
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
             }
-
-            Spacer(Modifier.height(12.dp))
-
-            val bx = bxNow ?: 0.0
-            val bz = bzNow ?: 0.0
-            BFieldCompass(
-                title = strings.bField,
-                bx = bx,
-                bz = bz,
-                modifier = Modifier.fillMaxWidth()
-            )
 
             Spacer(Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    IconButton(onClick = onRefresh) {
-                        Icon(
-                            imageVector = ImageVector.vectorResource(id = R.drawable.ic_refresh),
-                            contentDescription = strings.refresh,
-                            tint = c.textPrimary
-                        )
-                    }
-                    IconButton(onClick = onOpenGraphs) {
-                        Icon(
-                            imageVector = ImageVector.vectorResource(id = R.drawable.ic_graph),
-                            contentDescription = strings.graphs,
-                            tint = c.textPrimary
-                        )
-                    }
-                    IconButton(onClick = onOpenSun) {
-                        Icon(
-                            imageVector = ImageVector.vectorResource(id = R.drawable.ic_sun),
-                            contentDescription = strings.sun,
-                            tint = c.textPrimary
-                        )
-                    }
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(
-                            imageVector = ImageVector.vectorResource(id = R.drawable.ic_settings),
-                            contentDescription = strings.settings,
-                            tint = c.textPrimary
-                        )
-                    }
+                Text(strings.bField, color = c.textSecondary, modifier = Modifier.weight(1f))
+                IconButton(onClick = { help = HelpTopic.BFIELD }) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
+                        contentDescription = "Info",
+                        tint = c.textSecondary
+                    )
                 }
+            }
 
+            BFieldCompass(
+                title = "",
+                bx = bxNow ?: 0.0,
+                bz = bzNow ?: 0.0,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(14.dp))
+
+            // Маскот — оставляем, но делаем так, чтобы точно был виден
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
                 PixelFrog()
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(10.dp))
         }
     }
 }
