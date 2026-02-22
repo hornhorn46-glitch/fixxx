@@ -75,15 +75,10 @@ fun NowScreen(
 
     if (help != null) {
         val (title, body) = when (help!!) {
-            HelpTopic.KP -> strings.kpIndex to
-                "Kp — индекс геомагнитной активности (0–9). Чем выше Kp, тем выше шанс яркого сияния и тем южнее оно видно."
-            HelpTopic.WIND -> strings.windSpeed to
-                "Скорость солнечного ветра влияет на «давление» на магнитосферу. Выше скорость — чаще сильнее возмущения."
-            HelpTopic.BT -> "Bt" to
-                "Bt — общая сила магнитного поля (по Bx и Bz). Обычно: выше Bt = больше энергии в системе."
-            HelpTopic.BFIELD -> strings.bField to
-                "Компас показывает направление поля: по горизонтали Bx, по вертикали Bz.\n" +
-                "Когда Bz «южный» (отрицательный), сияние часто усиливается."
+            HelpTopic.KP -> strings.kpIndex to strings.helpKpBody
+            HelpTopic.WIND -> strings.windSpeed to strings.helpWindBody
+            HelpTopic.BT -> strings.bt to strings.helpBtBody
+            HelpTopic.BFIELD -> strings.bFieldDirection to strings.helpBFieldBody
         }
 
         AlertDialog(
@@ -91,11 +86,12 @@ fun NowScreen(
             title = { Text(title) },
             text = { Text(body) },
             confirmButton = {
-                TextButton(onClick = { help = null }) { Text("OK") }
+                TextButton(onClick = { help = null }) { Text(strings.ok) }
             },
-            containerColor = c.glass.copy(alpha = 0.92f),
+            containerColor = c.glass.copy(alpha = 0.96f),
             titleContentColor = c.textPrimary,
-            textContentColor = c.textSecondary
+            // было textSecondary — из-за этого текст реально мог быть "пустым" на стекле
+            textContentColor = c.textPrimary
         )
     }
 
@@ -111,6 +107,7 @@ fun NowScreen(
                 .windowInsetsPadding(WindowInsets.systemBars)
                 .verticalScroll(scroll)
                 .padding(horizontal = 14.dp)
+                // запас под нижнее меню/системные жесты
                 .padding(bottom = 110.dp)
         ) {
             Row(
@@ -143,6 +140,7 @@ fun NowScreen(
                     )
                 }
 
+                // (onOpenSun пока не трогаю — ты сказал солнечные картинки позже)
                 ModeToggle(mode = mode, onToggle = onModeChange, large = true)
             }
 
@@ -156,11 +154,15 @@ fun NowScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = strings.auroraScore, color = c.textSecondary, modifier = Modifier.weight(1f))
+                        Text(
+                            text = strings.auroraScore,
+                            color = c.textSecondary,
+                            modifier = Modifier.weight(1f)
+                        )
                         IconButton(onClick = { /* позже можно сделать help для score */ }) {
                             Icon(
                                 imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                contentDescription = "Info",
+                                contentDescription = strings.info,
                                 tint = c.textSecondary
                             )
                         }
@@ -196,7 +198,7 @@ fun NowScreen(
                             IconButton(onClick = { help = HelpTopic.KP }) {
                                 Icon(
                                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = "Info",
+                                    contentDescription = strings.info,
                                     tint = c.textSecondary
                                 )
                             }
@@ -226,7 +228,7 @@ fun NowScreen(
                             IconButton(onClick = { help = HelpTopic.WIND }) {
                                 Icon(
                                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = "Info",
+                                    contentDescription = strings.info,
                                     tint = c.textSecondary
                                 )
                             }
@@ -252,11 +254,11 @@ fun NowScreen(
                 GlassCard(modifier = Modifier.weight(1f)) {
                     Column(Modifier.padding(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Bt", color = c.textSecondary, modifier = Modifier.weight(1f))
+                            Text(strings.bt, color = c.textSecondary, modifier = Modifier.weight(1f))
                             IconButton(onClick = { help = HelpTopic.BT }) {
                                 Icon(
                                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = "Info",
+                                    contentDescription = strings.info,
                                     tint = c.textSecondary
                                 )
                             }
@@ -286,11 +288,11 @@ fun NowScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(strings.bField, color = c.textSecondary, modifier = Modifier.weight(1f))
+                Text(strings.bFieldDirection, color = c.textSecondary, modifier = Modifier.weight(1f))
                 IconButton(onClick = { help = HelpTopic.BFIELD }) {
                     Icon(
                         imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                        contentDescription = "Info",
+                        contentDescription = strings.info,
                         tint = c.textSecondary
                     )
                 }
