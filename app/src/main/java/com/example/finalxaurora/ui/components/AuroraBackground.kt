@@ -29,7 +29,7 @@ fun AuroraBackground(
             animationSpec = tween(durationMillis = 450),
             label = "bgCrossfade"
         ) { m ->
-            // ВАЖНО: используем реальные имена файлов в res: earth_bg.jpg / sun_bg.jpg
+            // Имена файлов как у тебя: earth_bg.jpg / sun_bg.jpg
             val resId = if (m == AppMode.SUN) R.drawable.sun_bg else R.drawable.earth_bg
 
             Image(
@@ -40,7 +40,7 @@ fun AuroraBackground(
             )
         }
 
-        // Лёгкий оверлей для читаемости (дёшево по GPU, без blur)
+        // Оверлей для читабельности (дёшево по GPU)
         Box(
             Modifier
                 .fillMaxSize()
@@ -55,11 +55,20 @@ fun AuroraBackground(
                 )
         )
 
-        // Мягкий tint от темы
+        // Лёгкий theme-tint
         Box(
             Modifier
                 .fillMaxSize()
                 .background(c.bgMid.copy(alpha = 0.06f))
         )
+
+        // Снег только на Земле, чуть более выраженный
+        if (mode == AppMode.EARTH) {
+            SnowParticles(
+                modifier = Modifier.fillMaxSize(),
+                maxParticles = 40,
+                baseAlpha = 0.28f
+            )
+        }
     }
 }
