@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +45,7 @@ import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 import com.example.finalxaurora.ui.vm.SpaceWeatherState
 import com.example.finalxaurora.util.Format
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NowScreen(
     strings: AppStrings,
@@ -78,7 +80,6 @@ fun NowScreen(
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .verticalScroll(scroll)
                 .padding(horizontal = 14.dp)
-                // чтобы можно было “проскроллить ниже” и низ не перекрывался нижним меню
                 .padding(bottom = 96.dp)
         ) {
             TopAppBar(
@@ -141,7 +142,6 @@ fun NowScreen(
 
                 PremiumGauge(
                     title = strings.windSpeed,
-                    // Важно: у NOAA это обычно km/s, но в UI тебе удобнее “km/s” как было.
                     valueText = Format.unit(Format.intOrDash(windNow), "km/s"),
                     value = windNow ?: 350.0,
                     min = 250.0,
@@ -167,7 +167,6 @@ fun NowScreen(
                         GaugeZone(0.40f, 0.60f, c.ok),
                         GaugeZone(0.60f, 1f, c.warning)
                     ),
-                    // Bz: отрицательное (southward) должно “уходить вниз” — инверсия нужна здесь.
                     invertNeedle = true,
                     modifier = Modifier.weight(1f)
                 )
@@ -186,7 +185,6 @@ fun NowScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // Нижняя панель действий (не ломаем структуру, просто гарантируем наличие кнопок)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -223,7 +221,6 @@ fun NowScreen(
                     }
                 }
 
-                // Лягушка: оставляем, но теперь точно есть место и она не “съедается”
                 PixelFrog()
             }
 
