@@ -4,18 +4,17 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,10 +23,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
 import com.example.finalxaurora.R
 import com.example.finalxaurora.domain.AppMode
 import com.example.finalxaurora.ui.components.AuroraBackground
@@ -46,6 +48,7 @@ fun FullImageScreen(
 ) {
     CosmosTheme(mode = mode, auroraScore = auroraScore) {
         val c = LocalCosmosTheme.current.colors
+        val ctx = LocalContext.current
 
         AuroraBackground(mode = mode)
 
@@ -62,7 +65,7 @@ fun FullImageScreen(
             Modifier
                 .fillMaxSize()
                 .background(Color.Transparent)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .statusBarsPadding()
         ) {
             Text(
                 text = title,
@@ -71,10 +74,8 @@ fun FullImageScreen(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
+                    .padding(top = 10.dp)
                     .alpha(0.95f)
-                    .background(Color.Transparent)
-                    .windowInsetsPadding(WindowInsets(0, 0, 0, 0))
-                    .then(Modifier)
             )
 
             IconButton(
@@ -89,7 +90,10 @@ fun FullImageScreen(
             }
 
             AsyncImage(
-                model = url,
+                model = ImageRequest.Builder(ctx)
+                    .data(url)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = title,
                 modifier = Modifier
                     .fillMaxSize()
@@ -106,7 +110,8 @@ fun FullImageScreen(
                         scaleY = scale
                         translationX = offsetX
                         translationY = offsetY
-                    }
+                    },
+                contentScale = ContentScale.Fit
             )
         }
     }
