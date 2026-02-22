@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -73,6 +74,7 @@ fun NowScreen(
 
     AuroraBackground(mode = mode)
 
+    // ---------- HELP DIALOG ----------
     if (help != null) {
         val (title, body) = when (help!!) {
             HelpTopic.KP -> strings.kpIndex to
@@ -86,20 +88,25 @@ fun NowScreen(
                 "Когда Bz «южный» (отрицательный), сияние часто усиливается."
         }
 
-        // FIX: принудительно делаем текст тёмным/контрастным под стекло
+        // Принудительно: светлая карточка + тёмный текст (не зависит от темы)
+        val dialogBg = Color.White.copy(alpha = 0.92f)
+        val dialogTitle = Color(0xFF0B0F14)
+        val dialogText = Color(0xFF0B0F14).copy(alpha = 0.86f)
+
         AlertDialog(
             onDismissRequest = { help = null },
-            title = { Text(text = title, color = c.textPrimary) },
-            text = { Text(text = body, color = c.textPrimary.copy(alpha = 0.92f)) },
+            title = { Text(text = title, color = dialogTitle) },
+            text = { Text(text = body, color = dialogText) },
             confirmButton = {
                 TextButton(onClick = { help = null }) {
                     Text(text = strings.ok, color = c.accent)
                 }
             },
-            containerColor = c.glass.copy(alpha = 0.95f),
+            containerColor = dialogBg,
             tonalElevation = 0.dp
         )
     }
+    // -------------------------------
 
     SimplePullToRefresh(
         enabled = true,
