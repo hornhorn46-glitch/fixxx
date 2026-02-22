@@ -75,7 +75,7 @@ fun NowScreen(
     if (help != null) {
         val (title, body) = when (help!!) {
             HelpTopic.KP -> strings.kpIndex to
-                "Kp — индекс геомагнитной активности (0–9). Чем выше Kp, тем выше шанс яркого сияния и тем южнее его видно."
+                "Kp — индекс геомагнитной активности (0–9). Чем выше Kp, тем выше шанс яркого сияния и тем южнее оно видно."
             HelpTopic.WIND -> strings.windSpeed to
                 "Скорость солнечного ветра влияет на «давление» на магнитосферу. Выше скорость — чаще сильнее возмущения."
             HelpTopic.BT -> "Bt" to
@@ -92,9 +92,13 @@ fun NowScreen(
             title = { Text(title, color = c.textPrimary) },
             text = { Text(body, color = c.textSecondary) },
             confirmButton = {
-                TextButton(onClick = { help = null }) { Text("OK", color = c.textPrimary) }
+                TextButton(onClick = { help = null }) {
+                    Text("OK", color = c.textPrimary)
+                }
             },
-            containerColor = c.glass.copy(alpha = 0.92f)
+            containerColor = c.glass.copy(alpha = 0.92f),
+            titleContentColor = c.textPrimary,
+            textContentColor = c.textSecondary
         )
     }
 
@@ -110,8 +114,8 @@ fun NowScreen(
                 .windowInsetsPadding(WindowInsets.systemBars)
                 .verticalScroll(scroll)
                 .padding(horizontal = 14.dp)
-                // запас снизу, чтобы не упираться в нижние элементы/жесты
-                .padding(bottom = 120.dp)
+                // запас снизу, чтобы точно долистывалось и ничего не перекрывалось
+                .padding(bottom = 130.dp)
         ) {
             // Верхняя строка
             Row(
@@ -191,24 +195,38 @@ fun NowScreen(
             val bzNow = state.mag.lastOrNull()?.bz
             val btNow = if (bxNow != null && bzNow != null) hypot(bxNow, bzNow) else null
 
-            // Gauges row
+            // ====== ЛЭЙАУТ КАК НА ТВОЁМ НАБРОСКЕ ======
+            // 1) верхние "шапки" (название + i)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                MetricHeaderCard(
+                    title = strings.kpIndex,
+                    onInfo = { help = HelpTopic.KP },
+                    modifier = Modifier.weight(1f)
+                )
+                MetricHeaderCard(
+                    title = strings.windSpeed,
+                    onInfo = { help = HelpTopic.WIND },
+                    modifier = Modifier.weight(1f)
+                )
+                MetricHeaderCard(
+                    title = "Bt",
+                    onInfo = { help = HelpTopic.BT },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(Modifier.padding(top = 10.dp))
+
+            // 2) нижние большие спидометры (без текста-шапки внутри)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 GlassCard(modifier = Modifier.weight(1f)) {
                     Column(Modifier.padding(10.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(strings.kpIndex, color = c.textSecondary, modifier = Modifier.weight(1f))
-                            IconButton(onClick = { help = HelpTopic.KP }) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = "Info",
-                                    tint = c.textSecondary
-                                )
-                            }
-                        }
-
                         PremiumGauge(
                             title = "",
                             valueText = Format.intOrDash(kpNow),
@@ -228,17 +246,6 @@ fun NowScreen(
 
                 GlassCard(modifier = Modifier.weight(1f)) {
                     Column(Modifier.padding(10.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(strings.windSpeed, color = c.textSecondary, modifier = Modifier.weight(1f))
-                            IconButton(onClick = { help = HelpTopic.WIND }) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = "Info",
-                                    tint = c.textSecondary
-                                )
-                            }
-                        }
-
                         PremiumGauge(
                             title = "",
                             valueText = Format.unit(Format.intOrDash(windNow), "km/s"),
@@ -258,17 +265,6 @@ fun NowScreen(
 
                 GlassCard(modifier = Modifier.weight(1f)) {
                     Column(Modifier.padding(10.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Bt", color = c.textSecondary, modifier = Modifier.weight(1f))
-                            IconButton(onClick = { help = HelpTopic.BT }) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = "Info",
-                                    tint = c.textSecondary
-                                )
-                            }
-                        }
-
                         PremiumGauge(
                             title = "",
                             valueText = Format.unit(Format.oneDecOrDash(btNow), "nT"),
@@ -286,6 +282,7 @@ fun NowScreen(
                     }
                 }
             }
+            // ====== /ЛЭЙАУТ ======
 
             Spacer(Modifier.padding(top = 12.dp))
 
@@ -325,6 +322,40 @@ fun NowScreen(
             }
 
             Spacer(Modifier.padding(top = 10.dp))
+        }
+    }
+}
+
+@Composable
+private fun MetricHeaderCard(
+    title: String,
+    onInfo: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val c = LocalCosmosTheme.current.colors
+
+    GlassCard(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                color = c.textSecondary,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onInfo) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
+                    contentDescription = "Info",
+                    tint = c.textSecondary
+                )
+            }
         }
     }
 }
