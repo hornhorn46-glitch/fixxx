@@ -3,18 +3,10 @@ package com.example.finalxaurora.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import com.example.finalxaurora.domain.AppLanguage
 import com.example.finalxaurora.domain.AppMode
-import com.example.finalxaurora.ui.nav.NavController
-import com.example.finalxaurora.ui.nav.Screen
 import com.example.finalxaurora.ui.screens.FullImageScreen
 import com.example.finalxaurora.ui.screens.GraphsScreen
 import com.example.finalxaurora.ui.screens.NowScreen
@@ -23,112 +15,144 @@ import com.example.finalxaurora.ui.screens.SunScreen
 import com.example.finalxaurora.ui.strings.stringsFor
 import com.example.finalxaurora.ui.theme.CosmosTheme
 import com.example.finalxaurora.ui.vm.SpaceWeatherViewModel
-import com.example.finalxaurora.ui.vm.VmFactory
+import com.example.finalxaurora.ui.vm.SpaceWeatherViewModelFactory
 import com.example.finalxaurora.util.SettingsStore
 import kotlinx.coroutines.delay
 
+sealed class Screen {
+    data object Now : Screen()
+    data object Sun : Screen()
+    data object Graphs : Screen()
+    data object Settings : Screen()
+    data class FullImage(val title: String, val url: String) : Screen()
+}
+
 @Composable
 fun App(
-    vmFactory: VmFactory,
+    vmFactory: SpaceWeatherViewModelFactory,
     settings: SettingsStore
 ) {
-    val vm: SpaceWeatherViewModel = viewModel(factory = vmFactory)
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var mode by remember { mutableStateOf(settings.loadMode()) }
     var language by remember { mutableStateOf(settings.loadLanguage()) }
 
-    val nav = remember { NavController(Screen.Now) }
-    val snack = remember { SnackbarHostState() }
+    val strings = remember(language) { stringsFor(language) }
 
-    val state = vm.state.value
-    val strings = stringsFor(language)
+    val vm: SpaceWeatherViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = vmFactory)
+    val state = vm.state
+
+    // back stack
+    val stack: SnapshotStateList<Screen> = remember { mutableStateListOf(Screen.Now) }
+    val current = stack.last()
+
+    fun push(s: Screen) {
+        // push должен менять state прямо сейчас — иначе и бывают “залипания”
+        stack.add(s)
+    }
+    fun pop(): Boolean {
+        return if (stack.size > 1) {
+            stack.removeAt(stack.lastIndex)
+            true
+        } else false
+    }
+
+    // Переключение режима (Earth/Sun) должно менять главный экран без лагов
+    fun setMode(newMode: AppMode) {
+        if (newMode == mode) return
+        mode = newMode
+        settings.saveMode(newMode)
+
+        // Если пользователь на базовом экране — меняем на соответствующий режиму.
+        // Если он в Settings/Graphs/FullImage — не дёргаем.
+        val top = stack.lastOrNull()
+        if (top == Screen.Now || top == Screen.Sun) {
+            stack.removeAt(stack.lastIndex)
+            stack.add(if (newMode == AppMode.SUN) Screen.Sun else Screen.Now)
+        }
+    }
+
+    // Double back to exit
+    var backArmed by remember { mutableStateOf(false) }
+    BackHandler {
+        val didPop = pop()
+        if (!didPop) {
+            if (backArmed) {
+                // дать системе закрыть Activity
+            } else {
+                backArmed = true
+                // коротко, без “спама”
+                snackbarHostState.showSnackbar(strings.pressBackAgain)
+                // авто-сброс
+                LaunchedEffect(Unit) {
+                    delay(1300)
+                    backArmed = false
+                }
+            }
+        }
+    }
 
     CosmosTheme(mode = mode, auroraScore = state.prediction.score) {
-        when (val s = nav.state.current) {
-            Screen.Now -> NowScreen(
-                strings = strings,
-                mode = mode,
-                onModeChange = { new -> mode = new; settings.saveMode(new) },
-                state = state,
-                onRefresh = { vm.refresh() },
-                onOpenGraphs = { nav.push(Screen.Graphs) },
-                onOpenSun = { nav.push(Screen.Sun) },
-                onOpenSettings = { nav.push(Screen.Settings) },
-                snackbarHostState = snack
-            )
-            Screen.Graphs -> GraphsScreen(
-                strings = strings,
-                mode = mode,
-                onModeChange = { new -> mode = new; settings.saveMode(new) },
-                state = state,
-                onBack = { nav.pop() },
-                snackbarHostState = snack
-            )
-            Screen.Sun -> SunScreen(
-                strings = strings,
-                mode = mode,
-                onModeChange = { new -> mode = new; settings.saveMode(new) },
-                onOpenImage = { title, url -> nav.push(Screen.FullImage(title, url)) },
-                onBack = { nav.pop() },
-                snackbarHostState = snack
-            )
-            Screen.Settings -> SettingsScreen(
-                strings = strings,
-                mode = mode,
-                onModeChange = { new -> mode = new; settings.saveMode(new) },
-                language = language,
-                onLanguageChange = { lang: AppLanguage -> language = lang; settings.saveLanguage(lang) },
-                onBack = { nav.pop() },
-                snackbarHostState = snack
-            )
-            is Screen.FullImage -> FullImageScreen(
-                title = s.title,
-                url = s.url,
-                strings = strings,
-                mode = mode,
-                auroraScore = state.prediction.score,
-                onBack = { nav.pop() }
-            )
-        }
+        // SnackbarHost показываем один раз глобально
+        androidx.compose.foundation.layout.Box {
+            when (current) {
+                is Screen.Now -> NowScreen(
+                    strings = strings,
+                    mode = mode,
+                    onModeChange = ::setMode,
+                    state = state,
+                    onRefresh = { vm.refresh() },
+                    onOpenGraphs = { push(Screen.Graphs) },
+                    onOpenSun = { push(Screen.Sun) },
+                    onOpenSettings = { push(Screen.Settings) },
+                    snackbarHostState = snackbarHostState
+                )
 
-        SnackbarHost(hostState = snack)
+                is Screen.Sun -> SunScreen(
+                    strings = strings,
+                    mode = mode,
+                    onModeChange = ::setMode,
+                    onOpenImage = { t, u -> push(Screen.FullImage(t, u)) },
+                    onBack = { pop() },
+                    snackbarHostState = snackbarHostState
+                )
 
-        BackHandler(enabled = nav.state.canGoBack()) { nav.pop() }
+                is Screen.Graphs -> GraphsScreen(
+                    strings = strings,
+                    mode = mode,
+                    onModeChange = ::setMode,
+                    state = state,
+                    onBack = { pop() },
+                    snackbarHostState = snackbarHostState
+                )
 
-        DoubleBackExitHandler(
-            enabled = !nav.state.canGoBack(),
-            snackbarHostState = snack,
-            message = strings.backAgainToExit
-        )
-    }
-}
+                is Screen.Settings -> SettingsScreen(
+                    strings = strings,
+                    mode = mode,
+                    onModeChange = ::setMode,
+                    language = language,
+                    onLanguageChange = {
+                        language = it
+                        settings.saveLanguage(it)
+                    },
+                    onBack = { pop() },
+                    snackbarHostState = snackbarHostState
+                )
 
-@Composable
-private fun DoubleBackExitHandler(
-    enabled: Boolean,
-    snackbarHostState: SnackbarHostState,
-    message: String
-) {
-    if (!enabled) return
+                is Screen.FullImage -> {
+                    val s = current as Screen.FullImage
+                    FullImageScreen(
+                        title = s.title,
+                        url = s.url,
+                        strings = strings,
+                        mode = mode,
+                        auroraScore = state.prediction.score,
+                        onBack = { pop() }
+                    )
+                }
+            }
 
-    var lastBack by remember { mutableLongStateOf(0L) }
-    var armed by remember { mutableStateOf(false) }
-
-    BackHandler(enabled = true) {
-        val now = System.currentTimeMillis()
-        if (armed && now - lastBack < 1600) {
-            // Let Activity handle process lifecycle; no hard exit here.
-        } else {
-            armed = true
-            lastBack = now
-        }
-    }
-
-    LaunchedEffect(armed) {
-        if (armed) {
-            snackbarHostState.showSnackbar(message)
-            delay(1600)
-            armed = false
+            SnackbarHost(hostState = snackbarHostState)
         }
     }
 }
