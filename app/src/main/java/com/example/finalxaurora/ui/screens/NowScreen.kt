@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -47,7 +48,7 @@ import com.example.finalxaurora.ui.vm.SpaceWeatherState
 import com.example.finalxaurora.util.Format
 import kotlin.math.hypot
 
-private enum class HelpTopic { KP, WIND, BT, BFIELD, SCORE }
+private enum class HelpTopic { KP, WIND, BT, BFIELD }
 
 @Composable
 fun NowScreen(
@@ -74,27 +75,18 @@ fun NowScreen(
 
     if (help != null) {
         val (title, body) = when (help!!) {
-            HelpTopic.KP -> strings.kpIndex to
-                "Kp — индекс геомагнитной активности (0–9). Чем выше Kp, тем выше шанс яркого сияния и тем южнее оно видно."
-            HelpTopic.WIND -> strings.windSpeed to
-                "Скорость солнечного ветра влияет на «давление» на магнитосферу. Выше скорость — чаще сильнее возмущения."
-            HelpTopic.BT -> "Bt" to
-                "Bt — общая сила магнитного поля (собрана из Bx и Bz). Обычно: выше Bt = больше энергии в системе."
-            HelpTopic.BFIELD -> "Направление магнитных линий солнечного ветра" to
-                "Компас показывает направление поля: по горизонтали Bx, по вертикали Bz.\n" +
-                "Когда Bz «южный» (отрицательный), сияние часто усиливается."
-            HelpTopic.SCORE -> strings.auroraScore to
-                "Оценка вероятности/силы сияния по совокупности параметров. Это подсказка, а не гарантия."
+            HelpTopic.KP -> strings.helpKpTitle to strings.helpKpBody
+            HelpTopic.WIND -> strings.helpWindTitle to strings.helpWindBody
+            HelpTopic.BT -> strings.helpBtTitle to strings.helpBtBody
+            HelpTopic.BFIELD -> strings.helpBFieldTitle to strings.helpBFieldBody
         }
 
         AlertDialog(
             onDismissRequest = { help = null },
-            title = { Text(title, color = c.textPrimary) },
-            text = { Text(body, color = c.textSecondary) },
+            title = { Text(title) },
+            text = { Text(body) },
             confirmButton = {
-                TextButton(onClick = { help = null }) {
-                    Text("OK", color = c.textPrimary)
-                }
+                TextButton(onClick = { help = null }) { Text(strings.ok) }
             },
             containerColor = c.glass.copy(alpha = 0.92f),
             titleContentColor = c.textPrimary,
@@ -114,10 +106,8 @@ fun NowScreen(
                 .windowInsetsPadding(WindowInsets.systemBars)
                 .verticalScroll(scroll)
                 .padding(horizontal = 14.dp)
-                // запас снизу, чтобы точно долистывалось и ничего не перекрывалось
-                .padding(bottom = 130.dp)
+                .padding(bottom = 110.dp)
         ) {
-            // Верхняя строка
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -125,7 +115,7 @@ fun NowScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "FinalXAurora",
+                    text = strings.appName,
                     color = c.textPrimary,
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 1,
@@ -151,10 +141,10 @@ fun NowScreen(
                 ModeToggle(mode = mode, onToggle = onModeChange, large = true)
             }
 
-            Spacer(Modifier.padding(top = 10.dp))
+            Spacer(Modifier.height(10.dp))
 
-            // Score card
             val score = state.prediction.score
+
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp)) {
                     Row(
@@ -166,10 +156,10 @@ fun NowScreen(
                             color = c.textSecondary,
                             modifier = Modifier.weight(1f)
                         )
-                        IconButton(onClick = { help = HelpTopic.SCORE }) {
+                        IconButton(onClick = { /* позже */ }) {
                             Icon(
                                 imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                contentDescription = "Info",
+                                contentDescription = strings.info,
                                 tint = c.textSecondary
                             )
                         }
@@ -180,53 +170,37 @@ fun NowScreen(
                         color = c.accent,
                         style = MaterialTheme.typography.headlineSmall
                     )
-                    Spacer(Modifier.padding(top = 6.dp))
+                    Spacer(Modifier.height(6.dp))
                     Text(text = state.prediction.title, color = c.textPrimary)
                     Text(text = state.prediction.description, color = c.textSecondary)
                 }
             }
 
-            Spacer(Modifier.padding(top = 12.dp))
+            Spacer(Modifier.height(12.dp))
 
-            // Current values
             val kpNow = state.kp.lastOrNull()?.kp
             val windNow = state.wind.lastOrNull()?.speed
             val bxNow = state.mag.lastOrNull()?.bx
             val bzNow = state.mag.lastOrNull()?.bz
             val btNow = if (bxNow != null && bzNow != null) hypot(bxNow, bzNow) else null
 
-            // ====== ЛЭЙАУТ КАК НА ТВОЁМ НАБРОСКЕ ======
-            // 1) верхние "шапки" (название + i)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                MetricHeaderCard(
-                    title = strings.kpIndex,
-                    onInfo = { help = HelpTopic.KP },
-                    modifier = Modifier.weight(1f)
-                )
-                MetricHeaderCard(
-                    title = strings.windSpeed,
-                    onInfo = { help = HelpTopic.WIND },
-                    modifier = Modifier.weight(1f)
-                )
-                MetricHeaderCard(
-                    title = "Bt",
-                    onInfo = { help = HelpTopic.BT },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(Modifier.padding(top = 10.dp))
-
-            // 2) нижние большие спидометры (без текста-шапки внутри)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 GlassCard(modifier = Modifier.weight(1f)) {
                     Column(Modifier.padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(strings.kpIndex, color = c.textSecondary, modifier = Modifier.weight(1f))
+                            IconButton(onClick = { help = HelpTopic.KP }) {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
+                                    contentDescription = strings.info,
+                                    tint = c.textSecondary
+                                )
+                            }
+                        }
+
                         PremiumGauge(
                             title = "",
                             valueText = Format.intOrDash(kpNow),
@@ -246,6 +220,17 @@ fun NowScreen(
 
                 GlassCard(modifier = Modifier.weight(1f)) {
                     Column(Modifier.padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(strings.windSpeed, color = c.textSecondary, modifier = Modifier.weight(1f))
+                            IconButton(onClick = { help = HelpTopic.WIND }) {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
+                                    contentDescription = strings.info,
+                                    tint = c.textSecondary
+                                )
+                            }
+                        }
+
                         PremiumGauge(
                             title = "",
                             valueText = Format.unit(Format.intOrDash(windNow), "km/s"),
@@ -265,6 +250,17 @@ fun NowScreen(
 
                 GlassCard(modifier = Modifier.weight(1f)) {
                     Column(Modifier.padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(strings.bt, color = c.textSecondary, modifier = Modifier.weight(1f))
+                            IconButton(onClick = { help = HelpTopic.BT }) {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
+                                    contentDescription = strings.info,
+                                    tint = c.textSecondary
+                                )
+                            }
+                        }
+
                         PremiumGauge(
                             title = "",
                             valueText = Format.unit(Format.oneDecOrDash(btNow), "nT"),
@@ -282,24 +278,18 @@ fun NowScreen(
                     }
                 }
             }
-            // ====== /ЛЭЙАУТ ======
 
-            Spacer(Modifier.padding(top = 12.dp))
+            Spacer(Modifier.height(12.dp))
 
-            // B-field title row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Направление магнитных линий солнечного ветра",
-                    color = c.textSecondary,
-                    modifier = Modifier.weight(1f)
-                )
+                Text(strings.bFieldLong, color = c.textSecondary, modifier = Modifier.weight(1f))
                 IconButton(onClick = { help = HelpTopic.BFIELD }) {
                     Icon(
                         imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                        contentDescription = "Info",
+                        contentDescription = strings.info,
                         tint = c.textSecondary
                     )
                 }
@@ -312,7 +302,7 @@ fun NowScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.padding(top = 14.dp))
+            Spacer(Modifier.height(14.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -321,41 +311,7 @@ fun NowScreen(
                 PixelFrog()
             }
 
-            Spacer(Modifier.padding(top = 10.dp))
-        }
-    }
-}
-
-@Composable
-private fun MetricHeaderCard(
-    title: String,
-    onInfo: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val c = LocalCosmosTheme.current.colors
-
-    GlassCard(modifier = modifier) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = title,
-                color = c.textSecondary,
-                style = MaterialTheme.typography.labelLarge,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(onClick = onInfo) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                    contentDescription = "Info",
-                    tint = c.textSecondary
-                )
-            }
+            Spacer(Modifier.height(10.dp))
         }
     }
 }
