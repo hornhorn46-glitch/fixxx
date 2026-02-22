@@ -9,19 +9,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,6 +37,7 @@ import com.example.finalxaurora.ui.strings.AppStrings
 import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 import com.example.finalxaurora.ui.vm.SpaceWeatherState
 import com.example.finalxaurora.util.Format
+import kotlin.math.hypot
 
 @Composable
 fun NowScreen(
@@ -70,28 +68,25 @@ fun NowScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(WindowInsets.statusBars.asPaddingValues())
+                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 14.dp)
         ) {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "FinalXAurora",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = c.textPrimary
-                    )
-                },
-                actions = {
-                    ModeToggle(mode = mode, onToggle = onModeChange)
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = c.textPrimary
+            // Верхняя панель без Experimental API
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "FinalXAurora",
+                    color = c.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
-            )
-
-            Spacer(Modifier.height(10.dp))
+                ModeToggle(mode = mode, onToggle = onModeChange)
+            }
 
             val score = state.prediction.score
 
@@ -100,8 +95,7 @@ fun NowScreen(
                     Text(text = strings.auroraScore, color = c.textSecondary)
                     Text(
                         text = "${score}/100",
-                        color = c.accent,
-                        style = MaterialTheme.typography.headlineSmall
+                        color = c.accent
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(text = state.prediction.title, color = c.textPrimary)
@@ -111,16 +105,20 @@ fun NowScreen(
 
             Spacer(Modifier.height(12.dp))
 
+            val kpNow = state.kp.lastOrNull()?.kp
+            val windNow = state.wind.lastOrNull()?.speed
+
+            val bxNow = state.mag.lastOrNull()?.bx
+            val bzNow = state.mag.lastOrNull()?.bz
+
+            // Bt считаем из Bx/Bz (компилится без поля bt)
+            val btNow: Double? =
+                if (bxNow != null && bzNow != null) hypot(bxNow, bzNow) else null
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                val kpNow = state.kp.lastOrNull()?.kp
-                val windNow = state.wind.lastOrNull()?.speed
-
-                // Bt из магнитометра (ожидается поле bt в MagSample)
-                val btNow = state.mag.lastOrNull()?.bt
-
                 PremiumGauge(
                     title = strings.kpIndex,
                     valueText = Format.intOrDash(kpNow),
@@ -169,8 +167,8 @@ fun NowScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            val bx = state.mag.lastOrNull()?.bx ?: 0.0
-            val bz = state.mag.lastOrNull()?.bz ?: 0.0
+            val bx = bxNow ?: 0.0
+            val bz = bzNow ?: 0.0
             BFieldCompass(
                 title = strings.bField,
                 bx = bx,
