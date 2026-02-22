@@ -8,7 +8,13 @@ class SpaceWeatherApi(private val client: OkHttpClient) {
 
     fun get(url: String): ResultX<String> {
         return try {
-            val req = Request.Builder().url(url).get().build()
+            val req = Request.Builder()
+                .url(url)
+                .get()
+                .header("User-Agent", "FinalXAuroraPremium/1.0")
+                .header("Accept", "*/*")
+                .build()
+
             client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) {
                     ResultX.Err("HTTP ${resp.code} for $url")
@@ -27,6 +33,7 @@ class SpaceWeatherApi(private val client: OkHttpClient) {
         const val URL_WIND = "https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json"
         const val URL_MAG = "https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json"
 
+        // GIF → нужен coil-gif
         const val URL_SUN_CME = "https://services.swpc.noaa.gov/images/animations/lasco-c3/latest.gif"
         const val URL_SUN_SPOTS = "https://services.swpc.noaa.gov/images/sunspot-region-summary.jpg"
         const val URL_AURORA_OVAL = "https://services.swpc.noaa.gov/images/animations/ovation-north/latest.gif"
