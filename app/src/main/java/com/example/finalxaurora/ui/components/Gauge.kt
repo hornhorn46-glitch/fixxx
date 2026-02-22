@@ -7,12 +7,13 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
@@ -21,7 +22,11 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-data class GaugeZone(val startT: Float, val endT: Float, val color: androidx.compose.ui.graphics.Color)
+data class GaugeZone(
+    val startT: Float,
+    val endT: Float,
+    val color: androidx.compose.ui.graphics.Color
+)
 
 @Composable
 fun PremiumGauge(
@@ -36,11 +41,12 @@ fun PremiumGauge(
 ) {
     val c = LocalCosmosTheme.current.colors
 
-    val rawT = ((value - min) / (max - min)).toFloat().coerceIn(0f, 1f)
-    val tTarget = if (invertNeedle) (1f - rawT) else rawT
+    val denom = (max - min)
+    val rawT = if (denom == 0.0) 0f else ((value - min) / denom).toFloat().coerceIn(0f, 1f)
+    val targetT = if (invertNeedle) (1f - rawT) else rawT
 
     val t by animateFloatAsState(
-        targetValue = tTarget,
+        targetValue = targetT,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.75f),
         label = "gaugeT"
     )
@@ -65,31 +71,34 @@ fun PremiumGauge(
                     val startDeg = 200f
                     val sweepDeg = 220f
 
-                    // зоны
+                    val arcRectTopLeft = Offset(center.x - r, center.y - r)
+                    val arcRectSize = Size(r * 2f, r * 2f)
+
+                    // ЗОНЫ
                     zones.forEach { z ->
                         drawArc(
                             color = z.color.copy(alpha = 0.55f),
                             startAngle = startDeg + sweepDeg * z.startT,
                             sweepAngle = sweepDeg * (z.endT - z.startT),
                             useCenter = false,
-                            topLeft = Offset(center.x - r, center.y - r),
-                            size = androidx.compose.ui.geometry.Size(r * 2f, r * 2f),
+                            topLeft = arcRectTopLeft,
+                            size = arcRectSize,
                             style = Stroke(width = r * 0.20f, cap = StrokeCap.Round)
                         )
                     }
 
-                    // нейтральный трек
+                    // ТРЕК
                     drawArc(
                         color = c.glassStroke.copy(alpha = 0.35f),
                         startAngle = startDeg,
                         sweepAngle = sweepDeg,
                         useCenter = false,
-                        topLeft = Offset(center.x - r, center.y - r),
-                        size = androidx.compose.ui.geometry.Size(r * 2f, r * 2f),
+                        topLeft = arcRectTopLeft,
+                        size = arcRectSize,
                         style = Stroke(width = r * 0.10f, cap = StrokeCap.Round)
                     )
 
-                    // “стрелка”
+                    // СТРЕЛКА
                     val ang = (startDeg + sweepDeg * t) * (PI / 180.0)
                     val nx = cos(ang).toFloat()
                     val ny = sin(ang).toFloat()
