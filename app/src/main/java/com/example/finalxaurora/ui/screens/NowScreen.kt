@@ -160,6 +160,7 @@ fun NowScreen(
                             GaugeZone(0.60f, 1f, c.warning)
                         ),
                         modifier = Modifier.weight(1f)
+                        invertNeedle = true
                     )
                 }
 
