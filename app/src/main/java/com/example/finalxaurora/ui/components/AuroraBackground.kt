@@ -24,14 +24,14 @@ fun AuroraBackground(mode: AppMode) {
             contentScale = ContentScale.Crop
         )
 
-        // Реальное затемнение фона
+        // сильнее затемняем, чтобы текст читался
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.38f))
+                .background(Color.Black.copy(alpha = 0.52f))
         )
 
-        // Снег только на EARTH (без параметров — под текущую сигнатуру SnowParticles)
+        // снег только на Земле
         if (mode == AppMode.EARTH) {
             SnowParticles(modifier = Modifier.fillMaxSize())
         }
