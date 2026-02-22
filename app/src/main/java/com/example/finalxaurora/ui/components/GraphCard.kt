@@ -3,23 +3,23 @@ package com.example.finalxaurora.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.finalxaurora.domain.GraphSeries
 import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 import kotlin.math.max
+import kotlin.math.min
 
 @Composable
 fun GraphCard(
@@ -27,112 +27,110 @@ fun GraphCard(
     modifier: Modifier = Modifier
 ) {
     val c = LocalCosmosTheme.current.colors
-    val anim by animateFloatAsState(targetValue = 1f, animationSpec = tween(700), label = "graphAnim")
+    val progress by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(650),
+        label = "graphDraw"
+    )
 
     GlassCard(modifier = modifier) {
-        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+        Box(Modifier.fillMaxSize()) {
+            // title
             Text(
                 text = "${series.title} ${series.unit}".trim(),
                 color = c.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(14.dp)
             )
 
+            val points = series.points
+            if (points.size < 2) {
+                Text(
+                    text = "No data",
+                    color = c.textSecondary,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+                return@Box
+            }
+
             Canvas(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 14.dp, vertical = 44.dp)
             ) {
                 val w = size.width
                 val h = size.height
-                if (w <= 0f || h <= 0f) return@Canvas
 
-                val padL = 10f
-                val padR = 10f
-                val padT = 6f
-                val padB = 18f
-                val plotW = w - padL - padR
-                val plotH = h - padT - padB
+                val minY = series.minY
+                val maxY = if (series.maxY == series.minY) series.minY + 1.0 else series.maxY
 
-                series.dangerAbove?.let { d ->
-                    val y = yFor(d, series.minY, series.maxY, padT, plotH)
+                fun yToPx(v: Double): Float {
+                    val t = ((v - minY) / (maxY - minY)).toFloat().coerceIn(0f, 1f)
+                    return h - t * h
+                }
+
+                // grid
+                val step = series.gridStep
+                if (step > 0.0) {
+                    var v = kotlin.math.ceil(minY / step) * step
+                    while (v <= maxY) {
+                        val y = yToPx(v)
+                        drawLine(
+                            color = c.textSecondary.copy(alpha = 0.18f),
+                            start = Offset(0f, y),
+                            end = Offset(w, y),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                        v += step
+                    }
+                }
+
+                // danger zones
+                series.dangerAbove?.let { da ->
+                    val y = yToPx(da)
                     drawRect(
                         color = c.danger.copy(alpha = 0.10f),
-                        topLeft = Offset(padL, padT),
-                        size = androidx.compose.ui.geometry.Size(plotW, max(0f, y - padT))
+                        topLeft = Offset(0f, 0f),
+                        size = androidx.compose.ui.geometry.Size(w, max(0f, y))
                     )
                 }
-
-                series.dangerBelow?.let { d ->
-                    val y = yFor(d, series.minY, series.maxY, padT, plotH)
+                series.dangerBelow?.let { db ->
+                    val y = yToPx(db)
                     drawRect(
                         color = c.danger.copy(alpha = 0.10f),
-                        topLeft = Offset(padL, y),
-                        size = androidx.compose.ui.geometry.Size(plotW, max(0f, padT + plotH - y))
+                        topLeft = Offset(0f, min(h, y)),
+                        size = androidx.compose.ui.geometry.Size(w, max(0f, h - min(h, y)))
                     )
                 }
 
-                var g = series.minY
-                while (g <= series.maxY + 0.0001) {
-                    val y = yFor(g, series.minY, series.maxY, padT, plotH)
-                    drawLine(
-                        color = c.glassStroke.copy(alpha = 0.30f),
-                        start = Offset(padL, y),
-                        end = Offset(padL + plotW, y),
-                        strokeWidth = 1.2f
-                    )
-                    g += series.gridStep
-                }
-
-                val pts = series.points
-                if (pts.size < 2) return@Canvas
-
-                fun xAt(i: Int): Float {
-                    val t = i.toFloat() / (pts.size - 1).toFloat()
-                    return padL + plotW * t
-                }
+                val n = points.size
+                val dx = w / max(1, (n - 1)).toFloat()
 
                 val path = Path()
-                path.moveTo(
-                    xAt(0),
-                    yFor(pts[0].value, series.minY, series.maxY, padT, plotH)
+                for (i in 0 until n) {
+                    val x = i * dx
+                    val y = yToPx(points[i].value)
+                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                }
+
+                // draw partial path (simple: clip by width*progress)
+                val clipW = w * progress
+                val clipped = Path()
+                // rebuild clipped path
+                for (i in 0 until n) {
+                    val x = i * dx
+                    val y = yToPx(points[i].value)
+                    if (x > clipW) break
+                    if (i == 0) clipped.moveTo(x, y) else clipped.lineTo(x, y)
+                }
+
+                drawPath(
+                    path = clipped,
+                    color = c.accent,
+                    style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
                 )
-
-                for (i in 1 until pts.size) {
-                    val x1 = xAt(i)
-                    val y1 = yFor(pts[i].value, series.minY, series.maxY, padT, plotH)
-                    val x0 = xAt(i - 1)
-                    val yPrev = yFor(pts[i - 1].value, series.minY, series.maxY, padT, plotH)
-                    val cx = (x0 + x1) / 2f
-                    path.cubicTo(cx, yPrev, cx, y1, x1, y1)
-                }
-
-                val clipW = plotW * anim.coerceIn(0f, 1f)
-
-                clipRect(
-                    left = padL,
-                    top = padT,
-                    right = padL + clipW,
-                    bottom = padT + plotH
-                ) {
-                    drawPath(
-                        path = path,
-                        color = c.accent.copy(alpha = 0.90f),
-                        style = Stroke(width = 4.2f, cap = StrokeCap.Round)
-                    )
-                    drawPath(
-                        path = path,
-                        color = c.accent.copy(alpha = 0.22f),
-                        style = Stroke(width = 10f, cap = StrokeCap.Round)
-                    )
-                }
             }
         }
     }
-}
-
-private fun yFor(v: Double, minY: Double, maxY: Double, padT: Float, plotH: Float): Float {
-    val clamped = v.coerceIn(minY, maxY)
-    val t = ((clamped - minY) / (maxY - minY)).toFloat()
-    return padT + plotH * (1f - t)
 }
