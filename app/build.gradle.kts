@@ -35,8 +35,6 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
-        // если у тебя включено allWarningsAsErrors где-то ещё — НЕ нужно.
-        // Мы убрали experimental API из кода, так что сборка должна быть чистой.
     }
 
     buildFeatures {
@@ -74,10 +72,10 @@ dependencies {
 
     implementation("androidx.compose.material3:material3")
 
-    // НУЖНО для XML темы Theme.Material3.DayNight.NoActionBar
+    // XML style Theme.Material3.DayNight.NoActionBar
     implementation("com.google.android.material:material:1.12.0")
 
-    // Иконки для Back и др.
+    // Icons
     implementation("androidx.compose.material:material-icons-extended")
 
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
@@ -85,8 +83,11 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
-    // сеть (если у тебя okHttp/ktor уже есть — оставь как в репе; этот блок не ломает)
+    // Networking
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Coil (AsyncImage)
+    implementation("io.coil-kt:coil-compose:2.6.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
