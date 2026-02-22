@@ -9,11 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,7 +41,6 @@ import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 import com.example.finalxaurora.ui.vm.SpaceWeatherState
 import com.example.finalxaurora.util.Format
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NowScreen(
     strings: AppStrings,
@@ -72,25 +67,24 @@ fun NowScreen(
         onRefresh = onRefresh,
         modifier = Modifier.fillMaxSize()
     ) {
-        val scroll = rememberScrollState()
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .verticalScroll(scroll)
+                .padding(WindowInsets.statusBars.asPaddingValues())
                 .padding(horizontal = 14.dp)
-                .padding(bottom = 96.dp)
         ) {
             TopAppBar(
                 title = {
                     Text(
                         text = "FinalXAurora",
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        color = c.textPrimary
                     )
                 },
-                actions = { ModeToggle(mode = mode, onToggle = onModeChange) },
+                actions = {
+                    ModeToggle(mode = mode, onToggle = onModeChange)
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
                     titleContentColor = c.textPrimary
@@ -123,7 +117,9 @@ fun NowScreen(
             ) {
                 val kpNow = state.kp.lastOrNull()?.kp
                 val windNow = state.wind.lastOrNull()?.speed
-                val bzNow = state.mag.lastOrNull()?.bz
+
+                // Bt из магнитометра (ожидается поле bt в MagSample)
+                val btNow = state.mag.lastOrNull()?.bt
 
                 PremiumGauge(
                     title = strings.kpIndex,
@@ -156,18 +152,17 @@ fun NowScreen(
                 )
 
                 PremiumGauge(
-                    title = strings.bz,
-                    valueText = Format.unit(Format.oneDecOrDash(bzNow), "nT"),
-                    value = bzNow ?: 0.0,
-                    min = -20.0,
-                    max = 20.0,
+                    title = "Bt",
+                    valueText = Format.unit(Format.oneDecOrDash(btNow), "nT"),
+                    value = btNow ?: 5.0,
+                    min = 0.0,
+                    max = 30.0,
                     zones = listOf(
-                        GaugeZone(0f, 0.25f, c.danger),
-                        GaugeZone(0.25f, 0.40f, c.warning),
-                        GaugeZone(0.40f, 0.60f, c.ok),
-                        GaugeZone(0.60f, 1f, c.warning)
+                        GaugeZone(0f, 10f / 30f, c.ok),
+                        GaugeZone(10f / 30f, 15f / 30f, c.warning),
+                        GaugeZone(15f / 30f, 20f / 30f, c.warning),
+                        GaugeZone(20f / 30f, 1f, c.danger)
                     ),
-                    invertNeedle = true,
                     modifier = Modifier.weight(1f)
                 )
             }
