@@ -1,13 +1,15 @@
 package com.example.finalxaurora.ui.components
 
+import android.graphics.Paint
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.offset
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -16,19 +18,19 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import com.example.finalxaurora.domain.GraphSeries
 import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.roundToInt
 
 @Composable
 fun GraphCard(
     series: GraphSeries,
-    unitLabel: String = "",
+    title: String = "",
+    unit: String = "",
     modifier: Modifier = Modifier
 ) {
     val c = LocalCosmosTheme.current.colors
@@ -40,63 +42,40 @@ fun GraphCard(
     )
 
     GlassCard(modifier = modifier) {
-        BoxWithConstraints(
-            modifier = Modifier
+        Column(
+            Modifier
                 .fillMaxSize()
                 .padding(12.dp)
         ) {
-            val wPx = constraints.maxWidth.toFloat().coerceAtLeast(1f)
-            val hPx = constraints.maxHeight.toFloat().coerceAtLeast(1f)
-
-            val leftPad = 44f
-            val topPad = 12f
-            val rightPad = 10f
-            val bottomPad = 26f
-
-            val chartW = max(1f, wPx - leftPad - rightPad)
-            val chartH = max(1f, hPx - topPad - bottomPad)
-
-            fun yToText(v: Double): String {
-                return when {
-                    abs(v) >= 100 -> v.toInt().toString()
-                    abs(v) >= 10 -> String.format("%.1f", v)
-                    else -> String.format("%.2f", v)
-                }
-            }
-
-            // Y-ticks: 5 значений (max, 75%, mid, 25%, min)
-            val yMin = series.minY
-            val yMax = series.maxY
-            val yMid = (yMin + yMax) / 2.0
-            val yQ1 = yMin + (yMid - yMin) / 2.0
-            val yQ3 = yMid + (yMax - yMid) / 2.0
-
-            val yTicks = listOf(
-                yMax to topPad,
-                yQ3 to (topPad + chartH * 0.25f),
-                yMid to (topPad + chartH * 0.50f),
-                yQ1 to (topPad + chartH * 0.75f),
-                yMin to (topPad + chartH)
-            )
-
-            val pts = series.points
-            val minV = series.minY
-            val maxV = series.maxY
-            val denom = (maxV - minV).takeIf { it != 0.0 } ?: 1.0
-
-            fun mapX(i: Int): Float {
-                val t01 = if (pts.size <= 1) 0f else i.toFloat() / (pts.size - 1).toFloat()
-                return leftPad + chartW * t01
-            }
-
-            fun mapY(v: Double): Float {
-                val t01 = ((v - minV) / denom).toFloat().coerceIn(0f, 1f)
-                return topPad + chartH * (1f - t01)
+            if (title.isNotBlank()) {
+                androidx.compose.material3.Text(
+                    text = title,
+                    color = c.textSecondary,
+                    maxLines = 1
+                )
+                Spacer(Modifier.height(8.dp))
             }
 
             Canvas(modifier = Modifier.fillMaxSize()) {
-                // grid (по тиккам)
-                for ((_, y) in yTicks) {
+                val w = size.width
+                val h = size.height
+
+                // больше места слева под числа Y
+                val leftPad = 56f
+                val topPad = 8f
+                val rightPad = 10f
+                val bottomPad = 26f
+
+                val chartW = max(1f, w - leftPad - rightPad)
+                val chartH = max(1f, h - topPad - bottomPad)
+
+                val pts = series.points
+                if (pts.isEmpty()) return@Canvas
+
+                // grid
+                val gridLines = 4
+                for (i in 0..gridLines) {
+                    val y = topPad + (chartH / gridLines) * i
                     drawLine(
                         color = c.textSecondary.copy(alpha = 0.12f),
                         start = Offset(leftPad, y),
@@ -105,7 +84,68 @@ fun GraphCard(
                     )
                 }
 
-                // danger tint
+                // helpers
+                fun yToText(v: Double): String {
+                    return when {
+                        abs(v) >= 100 -> v.toInt().toString()
+                        else -> String.format("%.2f", v).trimEnd('0').trimEnd('.')
+                    }
+                }
+
+                val yMin = series.minY
+                val yMax = series.maxY
+                val yMid1 = yMin + (yMax - yMin) * 0.25
+                val yMid2 = yMin + (yMax - yMin) * 0.50
+                val yMid3 = yMin + (yMax - yMin) * 0.75
+
+                val paint = Paint().apply {
+                    isAntiAlias = true
+                    textSize = 30f
+                    color = c.textSecondary.copy(alpha = 0.80f).toArgb()
+                }
+
+                fun drawLabel(txt: String, x: Float, y: Float) {
+                    // y here is baseline; keep it readable
+                    drawContext.canvas.nativeCanvas.drawText(txt, x, y, paint)
+                }
+
+                // Y labels: baseline shifts a bit to avoid clipping
+                drawLabel(yToText(yMax), 0f, topPad + 10f)
+                drawLabel(yToText(yMid3), 0f, topPad + chartH * 0.25f + 10f)
+                drawLabel(yToText(yMid2), 0f, topPad + chartH * 0.50f + 10f)
+                drawLabel(yToText(yMid1), 0f, topPad + chartH * 0.75f + 10f)
+                drawLabel(yToText(yMin), 0f, topPad + chartH + 10f)
+
+                // Unit label (top-left INSIDE chart but not over Y labels)
+                if (unit.isNotBlank()) {
+                    val unitPaint = Paint().apply {
+                        isAntiAlias = true
+                        textSize = 28f
+                        color = c.textSecondary.copy(alpha = 0.65f).toArgb()
+                    }
+                    drawContext.canvas.nativeCanvas.drawText(
+                        unit,
+                        leftPad + 6f,
+                        topPad + 26f,
+                        unitPaint
+                    )
+                }
+
+                val minV = series.minY
+                val maxV = series.maxY
+                val denom = (maxV - minV).takeIf { it != 0.0 } ?: 1.0
+
+                fun mapX(i: Int): Float {
+                    val t01 = if (pts.size <= 1) 0f else i.toFloat() / (pts.size - 1).toFloat()
+                    return leftPad + chartW * t01
+                }
+
+                fun mapY(v: Double): Float {
+                    val t01 = ((v - minV) / denom).toFloat().coerceIn(0f, 1f)
+                    return topPad + chartH * (1f - t01)
+                }
+
+                // Danger tint
                 series.dangerAbove?.let { thr ->
                     val y = mapY(thr)
                     drawRect(
@@ -123,67 +163,29 @@ fun GraphCard(
                     )
                 }
 
-                if (pts.isNotEmpty()) {
-                    val path = Path()
-                    for (i in pts.indices) {
-                        val x = mapX(i)
-                        val y = mapY(pts[i].value)
-                        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                    }
-
-                    drawPath(
-                        path = path,
-                        color = c.accent.copy(alpha = 0.92f * appear),
-                        style = Stroke(width = 3.2f, cap = StrokeCap.Round)
-                    )
+                // Line path
+                val path = Path()
+                for (i in pts.indices) {
+                    val x = mapX(i)
+                    val y = mapY(pts[i].value)
+                    if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
                 }
-            }
 
-            // Y-цифры поверх Canvas
-            for ((value, yPx) in yTicks) {
-                Text(
-                    text = yToText(value),
-                    color = c.textSecondary.copy(alpha = 0.78f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Clip,
-                    modifier = Modifier.offset {
-                        IntOffset(
-                            x = 0,
-                            y = (yPx - 8f).roundToInt()
-                        )
-                    }
+                drawPath(
+                    path = path,
+                    color = c.accent.copy(alpha = 0.92f * appear),
+                    style = Stroke(width = 3.2f, cap = StrokeCap.Round)
                 )
-            }
 
-            // X подписи + единицы измерения
-            val xLabelY = (topPad + chartH + 6f).roundToInt()
-            Text(
-                text = "0",
-                color = c.textSecondary.copy(alpha = 0.72f),
-                modifier = Modifier.offset { IntOffset(leftPad.roundToInt(), xLabelY) }
-            )
-            Text(
-                text = "12h",
-                color = c.textSecondary.copy(alpha = 0.72f),
-                modifier = Modifier.offset { IntOffset((leftPad + chartW * 0.5f).roundToInt() - 10, xLabelY) }
-            )
-            Text(
-                text = "24h",
-                color = c.textSecondary.copy(alpha = 0.72f),
-                modifier = Modifier.offset { IntOffset((leftPad + chartW).roundToInt() - 18, xLabelY) }
-            )
-
-            if (unitLabel.isNotBlank()) {
-                Text(
-                    text = unitLabel,
-                    color = c.textSecondary.copy(alpha = 0.72f),
-                    modifier = Modifier.offset {
-                        IntOffset(
-                            x = (leftPad + 6f).roundToInt(),
-                            y = 0
-                        )
-                    }
-                )
+                // X labels: 0h / 12h / 24h (or min/mid/max)
+                val xPaint = Paint().apply {
+                    isAntiAlias = true
+                    textSize = 28f
+                    color = c.textSecondary.copy(alpha = 0.65f).toArgb()
+                }
+                drawContext.canvas.nativeCanvas.drawText("0h", leftPad, topPad + chartH + 24f, xPaint)
+                drawContext.canvas.nativeCanvas.drawText("12h", leftPad + chartW * 0.5f - 20f, topPad + chartH + 24f, xPaint)
+                drawContext.canvas.nativeCanvas.drawText("24h", leftPad + chartW - 34f, topPad + chartH + 24f, xPaint)
             }
         }
     }
