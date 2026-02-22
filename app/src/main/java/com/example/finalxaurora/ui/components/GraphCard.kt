@@ -4,131 +4,146 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import com.example.finalxaurora.domain.GraphSeries
 import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 import kotlin.math.max
 import kotlin.math.min
 
+@OptIn(ExperimentalTextApi::class)
 @Composable
 fun GraphCard(
     series: GraphSeries,
     modifier: Modifier = Modifier
 ) {
     val c = LocalCosmosTheme.current.colors
-    val progress by animateFloatAsState(
+    val t: TextMeasurer = rememberTextMeasurer()
+
+    val appear by animateFloatAsState(
         targetValue = 1f,
-        animationSpec = tween(650),
-        label = "graphDraw"
+        animationSpec = tween(520),
+        label = "graphAppear"
     )
 
     GlassCard(modifier = modifier) {
-        Box(Modifier.fillMaxSize()) {
-            // title
-            Text(
-                text = "${series.title} ${series.unit}".trim(),
-                color = c.textPrimary,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(14.dp)
-            )
-
-            val points = series.points
-            if (points.size < 2) {
-                Text(
-                    text = "No data",
-                    color = c.textSecondary,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-                return@Box
-            }
-
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 14.dp, vertical = 44.dp)
-            ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(12.dp)
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
                 val w = size.width
                 val h = size.height
 
-                val minY = series.minY
-                val maxY = if (series.maxY == series.minY) series.minY + 1.0 else series.maxY
+                val leftPad = 42f // место под цифры Y
+                val topPad = 10f
+                val rightPad = 10f
+                val bottomPad = 22f
 
-                fun yToPx(v: Double): Float {
-                    val t = ((v - minY) / (maxY - minY)).toFloat().coerceIn(0f, 1f)
-                    return h - t * h
-                }
+                val chartW = max(1f, w - leftPad - rightPad)
+                val chartH = max(1f, h - topPad - bottomPad)
 
                 // grid
-                val step = series.gridStep
-                if (step > 0.0) {
-                    var v = kotlin.math.ceil(minY / step) * step
-                    while (v <= maxY) {
-                        val y = yToPx(v)
-                        drawLine(
-                            color = c.textSecondary.copy(alpha = 0.18f),
-                            start = Offset(0f, y),
-                            end = Offset(w, y),
-                            strokeWidth = 1.dp.toPx()
-                        )
-                        v += step
-                    }
-                }
-
-                // danger zones
-                series.dangerAbove?.let { da ->
-                    val y = yToPx(da)
-                    drawRect(
-                        color = c.danger.copy(alpha = 0.10f),
-                        topLeft = Offset(0f, 0f),
-                        size = androidx.compose.ui.geometry.Size(w, max(0f, y))
-                    )
-                }
-                series.dangerBelow?.let { db ->
-                    val y = yToPx(db)
-                    drawRect(
-                        color = c.danger.copy(alpha = 0.10f),
-                        topLeft = Offset(0f, min(h, y)),
-                        size = androidx.compose.ui.geometry.Size(w, max(0f, h - min(h, y)))
+                val gridLines = 4
+                for (i in 0..gridLines) {
+                    val y = topPad + (chartH / gridLines) * i
+                    drawLine(
+                        color = c.textSecondary.copy(alpha = 0.12f),
+                        start = Offset(leftPad, y),
+                        end = Offset(leftPad + chartW, y),
+                        strokeWidth = 1.0f
                     )
                 }
 
-                val n = points.size
-                val dx = w / max(1, (n - 1)).toFloat()
+                // Y labels: min/mid/max
+                fun yToText(v: Double): String {
+                    // компактно
+                    val s = if (kotlin.math.abs(v) >= 100) v.toInt().toString() else String.format("%.1f", v)
+                    return s
+                }
 
+                val yMin = series.minY
+                val yMax = series.maxY
+                val yMid = (yMin + yMax) / 2.0
+
+                fun drawYLabel(value: Double, y: Float) {
+                    val txt = yToText(value)
+                    val layout = t.measure(txt)
+                    drawText(
+                        textLayoutResult = layout,
+                        topLeft = Offset(
+                            x = 0f,
+                            y = y - layout.size.height / 2f
+                        ),
+                        color = c.textSecondary.copy(alpha = 0.75f)
+                    )
+                }
+
+                drawYLabel(yMax, topPad)
+                drawYLabel(yMid, topPad + chartH / 2f)
+                drawYLabel(yMin, topPad + chartH)
+
+                val pts = series.points
+                if (pts.isEmpty()) return@Canvas
+
+                val minV = series.minY
+                val maxV = series.maxY
+                val denom = (maxV - minV).takeIf { it != 0.0 } ?: 1.0
+
+                fun mapX(i: Int): Float {
+                    val t01 = if (pts.size <= 1) 0f else i.toFloat() / (pts.size - 1).toFloat()
+                    return leftPad + chartW * t01
+                }
+
+                fun mapY(v: Double): Float {
+                    val t01 = ((v - minV) / denom).toFloat().coerceIn(0f, 1f)
+                    return topPad + chartH * (1f - t01)
+                }
+
+                // Danger tint
+                series.dangerAbove?.let { thr ->
+                    val y = mapY(thr)
+                    drawRect(
+                        color = c.danger.copy(alpha = 0.10f),
+                        topLeft = Offset(leftPad, 0f),
+                        size = androidx.compose.ui.geometry.Size(chartW, y)
+                    )
+                }
+                series.dangerBelow?.let { thr ->
+                    val y = mapY(thr)
+                    drawRect(
+                        color = c.danger.copy(alpha = 0.10f),
+                        topLeft = Offset(leftPad, y),
+                        size = androidx.compose.ui.geometry.Size(chartW, (topPad + chartH) - y)
+                    )
+                }
+
+                // Line path
                 val path = Path()
-                for (i in 0 until n) {
-                    val x = i * dx
-                    val y = yToPx(points[i].value)
+                for (i in pts.indices) {
+                    val x = mapX(i)
+                    val y = mapY(pts[i].value)
                     if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
                 }
 
-                // draw partial path (simple: clip by width*progress)
-                val clipW = w * progress
-                val clipped = Path()
-                // rebuild clipped path
-                for (i in 0 until n) {
-                    val x = i * dx
-                    val y = yToPx(points[i].value)
-                    if (x > clipW) break
-                    if (i == 0) clipped.moveTo(x, y) else clipped.lineTo(x, y)
-                }
-
+                // draw animated (simple clip by alpha)
                 drawPath(
-                    path = clipped,
-                    color = c.accent,
-                    style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                    path = path,
+                    color = c.accent.copy(alpha = 0.92f * appear),
+                    style = Stroke(width = 3.2f, cap = StrokeCap.Round)
                 )
             }
         }
