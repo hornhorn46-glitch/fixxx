@@ -7,11 +7,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -53,7 +54,7 @@ fun FullImageScreen(
         var offsetY by remember { mutableFloatStateOf(0f) }
         var fade by remember { mutableFloatStateOf(0f) }
 
-        androidx.compose.runtime.LaunchedEffect(Unit) { fade = 1f }
+        LaunchedEffect(Unit) { fade = 1f }
 
         BackHandler { onBack() }
 
@@ -61,7 +62,7 @@ fun FullImageScreen(
             Modifier
                 .fillMaxSize()
                 .background(Color.Transparent)
-                .padding(WindowInsets.statusBars.asPaddingValues())
+                .padding(WindowInsets.safeDrawing)
         ) {
             Text(
                 text = title,
