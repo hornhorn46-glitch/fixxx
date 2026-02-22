@@ -6,8 +6,8 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -62,7 +62,7 @@ fun FullImageScreen(
             Modifier
                 .fillMaxSize()
                 .background(Color.Transparent)
-                .padding(WindowInsets.safeDrawing)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
             Text(
                 text = title,
@@ -71,8 +71,10 @@ fun FullImageScreen(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 10.dp)
                     .alpha(0.95f)
+                    .background(Color.Transparent)
+                    .windowInsetsPadding(WindowInsets(0, 0, 0, 0))
+                    .then(Modifier)
             )
 
             IconButton(
