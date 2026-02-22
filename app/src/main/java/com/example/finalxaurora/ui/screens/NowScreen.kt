@@ -4,12 +4,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -17,10 +18,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,62 +75,31 @@ fun NowScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .verticalScroll(scroll)
                 .padding(horizontal = 14.dp)
+                // чтобы можно было “проскроллить ниже” и низ не перекрывался нижним меню
+                .padding(bottom = 96.dp)
         ) {
-            // Верхняя панель “как в рефе”: заголовок + иконки
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(Modifier.weight(1f)) {
+            TopAppBar(
+                title = {
                     Text(
-                        text = strings.now, // если нет strings.now — замени на "Сейчас"
-                        color = c.textPrimary,
-                        style = MaterialTheme.typography.headlineSmall,
+                        text = "FinalXAurora",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = strings.updated + ": " + (state.updatedAtText ?: "—"),
-                        color = c.textSecondary,
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                },
+                actions = { ModeToggle(mode = mode, onToggle = onModeChange) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = c.textPrimary
+                )
+            )
 
-                IconButton(onClick = onOpenGraphs) {
-                    Icon(
-                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_graph),
-                        contentDescription = strings.graphs,
-                        tint = c.textPrimary
-                    )
-                }
-                IconButton(onClick = onOpenSettings) {
-                    Icon(
-                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_settings),
-                        contentDescription = strings.settings,
-                        tint = c.textPrimary
-                    )
-                }
-                IconButton(onClick = onRefresh) {
-                    Icon(
-                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_refresh),
-                        contentDescription = strings.refresh,
-                        tint = c.textPrimary
-                    )
-                }
-            }
+            Spacer(Modifier.height(10.dp))
 
-            Spacer(Modifier.height(12.dp))
-
-            // Карточка “Прогноз / Score”
             val score = state.prediction.score
+
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp)) {
                     Text(text = strings.auroraScore, color = c.textSecondary)
@@ -143,112 +116,67 @@ fun NowScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // “Параметры (сейчас)” + 2x2 сетка
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = strings.parametersNow, // если нет — замени на "Параметры (сейчас)"
-                            color = c.textPrimary,
-                            style = MaterialTheme.typography.titleLarge,
-                            modifier = Modifier.weight(1f)
-                        )
-                        // оставим тоггл режима здесь же (не ломаем структуру)
-                        ModeToggle(mode = mode, onToggle = onModeChange)
-                    }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                val kpNow = state.kp.lastOrNull()?.kp
+                val windNow = state.wind.lastOrNull()?.speed
+                val bzNow = state.mag.lastOrNull()?.bz
 
-                    Spacer(Modifier.height(12.dp))
+                PremiumGauge(
+                    title = strings.kpIndex,
+                    valueText = Format.intOrDash(kpNow),
+                    value = kpNow ?: 0.0,
+                    min = 0.0,
+                    max = 9.0,
+                    zones = listOf(
+                        GaugeZone(0f, 5f / 9f, c.ok),
+                        GaugeZone(5f / 9f, 6f / 9f, c.warning),
+                        GaugeZone(6f / 9f, 7f / 9f, c.warning),
+                        GaugeZone(7f / 9f, 1f, c.danger)
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
 
-                    val kpNow = state.kp.lastOrNull()?.kp
-                    val windNow = state.wind.lastOrNull()?.speed
-                    val bzNow = state.mag.lastOrNull()?.bz
-                    val rhoNow = state.wind.lastOrNull()?.density
+                PremiumGauge(
+                    title = strings.windSpeed,
+                    // Важно: у NOAA это обычно km/s, но в UI тебе удобнее “km/s” как было.
+                    valueText = Format.unit(Format.intOrDash(windNow), "km/s"),
+                    value = windNow ?: 350.0,
+                    min = 250.0,
+                    max = 1000.0,
+                    zones = listOf(
+                        GaugeZone(0f, (450f - 250f) / (1000f - 250f), c.ok),
+                        GaugeZone((450f - 250f) / (1000f - 250f), (600f - 250f) / (1000f - 250f), c.warning),
+                        GaugeZone((600f - 250f) / (1000f - 250f), (750f - 250f) / (1000f - 250f), c.warning),
+                        GaugeZone((750f - 250f) / (1000f - 250f), 1f, c.danger)
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
 
-                    // 2x2
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        PremiumGauge(
-                            title = strings.kpIndex,
-                            valueText = Format.intOrDash(kpNow),
-                            value = kpNow ?: 0.0,
-                            min = 0.0,
-                            max = 9.0,
-                            zones = listOf(
-                                GaugeZone(0f, 5f / 9f, c.ok),
-                                GaugeZone(5f / 9f, 6f / 9f, c.warning),
-                                GaugeZone(6f / 9f, 7f / 9f, c.warning),
-                                GaugeZone(7f / 9f, 1f, c.danger)
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        PremiumGauge(
-                            title = strings.windSpeed,
-                            valueText = Format.unit(Format.oneDecOrDash(windNow), "km/s"),
-                            value = windNow ?: 350.0,
-                            min = 250.0,
-                            max = 1000.0,
-                            zones = listOf(
-                                GaugeZone(0f, (450f - 250f) / (1000f - 250f), c.ok),
-                                GaugeZone((450f - 250f) / (1000f - 250f), (600f - 250f) / (1000f - 250f), c.warning),
-                                GaugeZone((600f - 250f) / (1000f - 250f), (750f - 250f) / (1000f - 250f), c.warning),
-                                GaugeZone((750f - 250f) / (1000f - 250f), 1f, c.danger)
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    Spacer(Modifier.height(10.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        // Bz: по твоей логике “инвертировать вверх/вниз” — это для компаса/графика,
-                        // но для gauge тоже полезно: отрицательное Bz визуально “вниз”.
-                        PremiumGauge(
-                            title = strings.bz,
-                            valueText = Format.unit(Format.oneDecOrDash(bzNow), "nT"),
-                            value = bzNow ?: 0.0,
-                            min = -20.0,
-                            max = 20.0,
-                            zones = listOf(
-                                GaugeZone(0f, 0.25f, c.danger),
-                                GaugeZone(0.25f, 0.40f, c.warning),
-                                GaugeZone(0.40f, 0.60f, c.ok),
-                                GaugeZone(0.60f, 1f, c.warning)
-                            ),
-                            invertNeedle = true,
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        PremiumGauge(
-                            title = strings.rho, // если нет — замени на "ρ"
-                            valueText = Format.oneDecOrDash(rhoNow),
-                            value = rhoNow ?: 0.0,
-                            min = 0.0,
-                            max = 50.0,
-                            zones = listOf(
-                                GaugeZone(0f, 0.60f, c.ok),
-                                GaugeZone(0.60f, 0.80f, c.warning),
-                                GaugeZone(0.80f, 1f, c.danger)
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
+                PremiumGauge(
+                    title = strings.bz,
+                    valueText = Format.unit(Format.oneDecOrDash(bzNow), "nT"),
+                    value = bzNow ?: 0.0,
+                    min = -20.0,
+                    max = 20.0,
+                    zones = listOf(
+                        GaugeZone(0f, 0.25f, c.danger),
+                        GaugeZone(0.25f, 0.40f, c.warning),
+                        GaugeZone(0.40f, 0.60f, c.ok),
+                        GaugeZone(0.60f, 1f, c.warning)
+                    ),
+                    // Bz: отрицательное (southward) должно “уходить вниз” — инверсия нужна здесь.
+                    invertNeedle = true,
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             Spacer(Modifier.height(12.dp))
 
             val bx = state.mag.lastOrNull()?.bx ?: 0.0
             val bz = state.mag.lastOrNull()?.bz ?: 0.0
-
             BFieldCompass(
                 title = strings.bField,
                 bx = bx,
@@ -258,13 +186,27 @@ fun NowScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // нижняя строка: кнопки + лягушка (если она где-то пропадает — её проще держать тут)
+            // Нижняя панель действий (не ломаем структуру, просто гарантируем наличие кнопок)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IconButton(onClick = onRefresh) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(id = R.drawable.ic_refresh),
+                            contentDescription = strings.refresh,
+                            tint = c.textPrimary
+                        )
+                    }
+                    IconButton(onClick = onOpenGraphs) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(id = R.drawable.ic_graph),
+                            contentDescription = strings.graphs,
+                            tint = c.textPrimary
+                        )
+                    }
                     IconButton(onClick = onOpenSun) {
                         Icon(
                             imageVector = ImageVector.vectorResource(id = R.drawable.ic_sun),
@@ -272,12 +214,20 @@ fun NowScreen(
                             tint = c.textPrimary
                         )
                     }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(id = R.drawable.ic_settings),
+                            contentDescription = strings.settings,
+                            tint = c.textPrimary
+                        )
+                    }
                 }
+
+                // Лягушка: оставляем, но теперь точно есть место и она не “съедается”
                 PixelFrog()
             }
 
-            // запас снизу, чтобы ничего не перекрывалось нижней панелью/жестами
-            Spacer(Modifier.height(110.dp))
+            Spacer(Modifier.height(12.dp))
         }
     }
 }
