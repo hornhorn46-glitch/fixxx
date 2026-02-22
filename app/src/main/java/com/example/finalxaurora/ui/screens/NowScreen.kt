@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -74,7 +75,7 @@ fun NowScreen(
 
     AuroraBackground(mode = mode)
 
-    // ---------- HELP DIALOG ----------
+    // ---- HELP DIALOG (forced dark text) ----
     if (help != null) {
         val (title, body) = when (help!!) {
             HelpTopic.KP -> strings.kpIndex to
@@ -84,11 +85,11 @@ fun NowScreen(
             HelpTopic.BT -> "Bt" to
                 "Bt — общая сила магнитного поля (по Bx и Bz). Обычно: выше Bt = больше энергии в системе."
             HelpTopic.BFIELD -> strings.bField to
-                "Компас показывает направление поля: по горизонтали Bx, по вертикали Bz.\n" +
-                "Когда Bz «южный» (отрицательный), сияние часто усиливается."
+                "Индикатор показывает направление межпланетного магнитного поля:\n" +
+                "по горизонтали — Bx, по вертикали — Bz.\n" +
+                "Когда Bz южный (отрицательный), вероятность сияния часто выше."
         }
 
-        // Принудительно: светлая карточка + тёмный текст (не зависит от темы)
         val dialogBg = Color.White.copy(alpha = 0.92f)
         val dialogTitle = Color(0xFF0B0F14)
         val dialogText = Color(0xFF0B0F14).copy(alpha = 0.86f)
@@ -106,7 +107,7 @@ fun NowScreen(
             tonalElevation = 0.dp
         )
     }
-    // -------------------------------
+    // ---------------------------------------
 
     SimplePullToRefresh(
         enabled = true,
@@ -122,6 +123,7 @@ fun NowScreen(
                 .padding(horizontal = 14.dp)
                 .padding(bottom = 110.dp)
         ) {
+            // Top row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -157,8 +159,8 @@ fun NowScreen(
 
             Spacer(Modifier.height(10.dp))
 
+            // Score card
             val score = state.prediction.score
-
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp)) {
                     Row(
@@ -166,7 +168,7 @@ fun NowScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(text = strings.auroraScore, color = c.textSecondary, modifier = Modifier.weight(1f))
-                        IconButton(onClick = { /* позже можно сделать help для score */ }) {
+                        IconButton(onClick = { /* later */ }) {
                             Icon(
                                 imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
                                 contentDescription = "Info",
@@ -188,109 +190,87 @@ fun NowScreen(
 
             Spacer(Modifier.height(12.dp))
 
+            // Live values
             val kpNow = state.kp.lastOrNull()?.kp
             val windNow = state.wind.lastOrNull()?.speed
             val bxNow = state.mag.lastOrNull()?.bx
             val bzNow = state.mag.lastOrNull()?.bz
             val btNow = if (bxNow != null && bzNow != null) hypot(bxNow, bzNow) else null
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                GlassCard(modifier = Modifier.weight(1f)) {
-                    Column(Modifier.padding(10.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(strings.kpIndex, color = c.textSecondary, modifier = Modifier.weight(1f))
-                            IconButton(onClick = { help = HelpTopic.KP }) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = "Info",
-                                    tint = c.textSecondary
-                                )
-                            }
-                        }
-
-                        PremiumGauge(
-                            title = "",
-                            valueText = Format.intOrDash(kpNow),
-                            value = kpNow ?: 0.0,
-                            min = 0.0,
-                            max = 9.0,
-                            zones = listOf(
-                                GaugeZone(0f, 5f / 9f, c.ok),
-                                GaugeZone(5f / 9f, 6f / 9f, c.warning),
-                                GaugeZone(6f / 9f, 7f / 9f, c.warning),
-                                GaugeZone(7f / 9f, 1f, c.danger)
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+            // ----- Gauges: horizontal layout inside each card -----
+            GaugeRowCard(
+                title = strings.kpIndex,
+                onHelp = { help = HelpTopic.KP },
+                valueText = Format.intOrDash(kpNow),
+                gauge = {
+                    PremiumGauge(
+                        title = "",
+                        valueText = "",
+                        value = kpNow ?: 0.0,
+                        min = 0.0,
+                        max = 9.0,
+                        zones = listOf(
+                            GaugeZone(0f, 5f / 9f, c.ok),
+                            GaugeZone(5f / 9f, 6f / 9f, c.warning),
+                            GaugeZone(6f / 9f, 7f / 9f, c.warning),
+                            GaugeZone(7f / 9f, 1f, c.danger)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
+            )
 
-                GlassCard(modifier = Modifier.weight(1f)) {
-                    Column(Modifier.padding(10.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(strings.windSpeed, color = c.textSecondary, modifier = Modifier.weight(1f))
-                            IconButton(onClick = { help = HelpTopic.WIND }) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = "Info",
-                                    tint = c.textSecondary
-                                )
-                            }
-                        }
+            Spacer(Modifier.height(10.dp))
 
-                        PremiumGauge(
-                            title = "",
-                            valueText = Format.unit(Format.intOrDash(windNow), "km/s"),
-                            value = windNow ?: 350.0,
-                            min = 250.0,
-                            max = 1000.0,
-                            zones = listOf(
-                                GaugeZone(0f, (450f - 250f) / (1000f - 250f), c.ok),
-                                GaugeZone((450f - 250f) / (1000f - 250f), (600f - 250f) / (1000f - 250f), c.warning),
-                                GaugeZone((600f - 250f) / (1000f - 250f), (750f - 250f) / (1000f - 250f), c.warning),
-                                GaugeZone((750f - 250f) / (1000f - 250f), 1f, c.danger)
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+            GaugeRowCard(
+                title = strings.windSpeed,
+                onHelp = { help = HelpTopic.WIND },
+                valueText = Format.unit(Format.intOrDash(windNow), "km/s"),
+                gauge = {
+                    PremiumGauge(
+                        title = "",
+                        valueText = "",
+                        value = windNow ?: 350.0,
+                        min = 250.0,
+                        max = 1000.0,
+                        zones = listOf(
+                            GaugeZone(0f, (450f - 250f) / (1000f - 250f), c.ok),
+                            GaugeZone((450f - 250f) / (1000f - 250f), (600f - 250f) / (1000f - 250f), c.warning),
+                            GaugeZone((600f - 250f) / (1000f - 250f), (750f - 250f) / (1000f - 250f), c.warning),
+                            GaugeZone((750f - 250f) / (1000f - 250f), 1f, c.danger)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
+            )
 
-                GlassCard(modifier = Modifier.weight(1f)) {
-                    Column(Modifier.padding(10.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Bt", color = c.textSecondary, modifier = Modifier.weight(1f))
-                            IconButton(onClick = { help = HelpTopic.BT }) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = "Info",
-                                    tint = c.textSecondary
-                                )
-                            }
-                        }
+            Spacer(Modifier.height(10.dp))
 
-                        PremiumGauge(
-                            title = "",
-                            valueText = Format.unit(Format.oneDecOrDash(btNow), "nT"),
-                            value = btNow ?: 0.0,
-                            min = 0.0,
-                            max = 50.0,
-                            zones = listOf(
-                                GaugeZone(0f, 0.45f, c.ok),
-                                GaugeZone(0.45f, 0.70f, c.warning),
-                                GaugeZone(0.70f, 0.85f, c.warning),
-                                GaugeZone(0.85f, 1f, c.danger)
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+            GaugeRowCard(
+                title = "Bt",
+                onHelp = { help = HelpTopic.BT },
+                valueText = Format.unit(Format.oneDecOrDash(btNow), "nT"),
+                gauge = {
+                    PremiumGauge(
+                        title = "",
+                        valueText = "",
+                        value = btNow ?: 0.0,
+                        min = 0.0,
+                        max = 50.0,
+                        zones = listOf(
+                            GaugeZone(0f, 0.45f, c.ok),
+                            GaugeZone(0.45f, 0.70f, c.warning),
+                            GaugeZone(0.70f, 0.85f, c.warning),
+                            GaugeZone(0.85f, 1f, c.danger)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
-            }
+            )
 
             Spacer(Modifier.height(12.dp))
 
+            // Title + compass
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -317,11 +297,68 @@ fun NowScreen(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
-            ) {
-                PixelFrog()
-            }
+            ) { PixelFrog() }
 
             Spacer(Modifier.height(10.dp))
+        }
+    }
+}
+
+@Composable
+private fun GaugeRowCard(
+    title: String,
+    onHelp: () -> Unit,
+    valueText: String,
+    gauge: @Composable () -> Unit
+) {
+    val c = LocalCosmosTheme.current.colors
+
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left text block
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = title,
+                        color = c.textSecondary,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    IconButton(onClick = onHelp) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
+                            contentDescription = "Info",
+                            tint = c.textSecondary
+                        )
+                    }
+                }
+
+                Text(
+                    text = valueText,
+                    color = c.textPrimary,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            // Right gauge block: fixed width to prevent text overlap
+            Column(
+                modifier = Modifier.width(170.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                gauge()
+            }
         }
     }
 }
