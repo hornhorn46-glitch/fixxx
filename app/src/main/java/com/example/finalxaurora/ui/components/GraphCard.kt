@@ -1,5 +1,6 @@
 package com.example.finalxaurora.ui.components
 
+import android.graphics.Paint
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -10,27 +11,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.drawText
-import androidx.compose.ui.text.ExperimentalTextApi
-import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import com.example.finalxaurora.domain.GraphSeries
 import com.example.finalxaurora.ui.theme.LocalCosmosTheme
-import kotlin.math.max
 import kotlin.math.abs
+import kotlin.math.max
 
-@OptIn(ExperimentalTextApi::class)
 @Composable
 fun GraphCard(
     series: GraphSeries,
     modifier: Modifier = Modifier
 ) {
     val c = LocalCosmosTheme.current.colors
-    val t: TextMeasurer = rememberTextMeasurer()
 
     val appear by animateFloatAsState(
         targetValue = 1f,
@@ -48,10 +45,10 @@ fun GraphCard(
                 val w = size.width
                 val h = size.height
 
-                val leftPad = 44f // место под цифры Y
-                val topPad = 10f
-                val rightPad = 10f
-                val bottomPad = 22f
+                val leftPad = 44.dp.toPx()   // место под цифры Y
+                val topPad = 10.dp.toPx()
+                val rightPad = 10.dp.toPx()
+                val bottomPad = 22.dp.toPx()
 
                 val chartW = max(1f, w - leftPad - rightPad)
                 val chartH = max(1f, h - topPad - bottomPad)
@@ -68,7 +65,6 @@ fun GraphCard(
                     )
                 }
 
-                // labels
                 fun yToText(v: Double): String {
                     return when {
                         abs(v) >= 100 -> v.toInt().toString()
@@ -80,17 +76,18 @@ fun GraphCard(
                 val yMax = series.maxY
                 val yMid = (yMin + yMax) / 2.0
 
+                // Paint for Y labels
+                val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = c.textSecondary.copy(alpha = 0.78f).toArgb()
+                    textSize = 12.dp.toPx()
+                }
+                val fm = textPaint.fontMetrics
+
                 fun drawYLabel(value: Double, y: Float) {
                     val txt = yToText(value)
-                    val layout = t.measure(txt)
-                    drawText(
-                        textLayoutResult = layout,
-                        topLeft = Offset(
-                            x = 0f,
-                            y = y - layout.size.height / 2f
-                        ),
-                        color = c.textSecondary.copy(alpha = 0.78f)
-                    )
+                    // baseline so that text is vertically centered on y
+                    val baseline = y - (fm.ascent + fm.descent) / 2f
+                    drawContext.canvas.nativeCanvas.drawText(txt, 0f, baseline, textPaint)
                 }
 
                 drawYLabel(yMax, topPad)
@@ -120,7 +117,7 @@ fun GraphCard(
                     drawRect(
                         color = c.danger.copy(alpha = 0.10f),
                         topLeft = Offset(leftPad, 0f),
-                        size = androidx.compose.ui.geometry.Size(chartW, y)
+                        size = Size(chartW, y)
                     )
                 }
                 series.dangerBelow?.let { thr ->
@@ -128,7 +125,7 @@ fun GraphCard(
                     drawRect(
                         color = c.danger.copy(alpha = 0.10f),
                         topLeft = Offset(leftPad, y),
-                        size = androidx.compose.ui.geometry.Size(chartW, (topPad + chartH) - y)
+                        size = Size(chartW, (topPad + chartH) - y)
                     )
                 }
 
