@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -48,33 +51,59 @@ fun SunScreen(
     onBack: () -> Unit,
     snackbarHostState: SnackbarHostState
 ) {
-    // параметры оставлены, чтобы не ломать сигнатуры/навигацию
-    val _unusedSnack = snackbarHostState
-    val _unusedOpen = onOpenImage
+    val c = LocalCosmosTheme.current.colors
+    val scroll = rememberScrollState()
 
     AuroraBackground(mode = mode)
 
     var tab by remember { mutableIntStateOf(0) }
+
+    val isRu = strings.sun == "Солнце"
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
             .padding(horizontal = 14.dp)
+            .verticalScroll(scroll)
+            .padding(bottom = 110.dp)
     ) {
         CosmosTopBar(
             title = strings.sun,
             onBack = onBack,
             actions = {
-                ModeToggle(
-                    mode = mode,
-                    onToggle = onModeChange,
-                    large = true
-                )
+                // Важно: крупная кнопка, как на главном
+                ModeToggle(mode = mode, onToggle = onModeChange, large = true)
             }
         )
 
         Spacer(Modifier.height(10.dp))
+
+        GlassCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp)) {
+                Text(
+                    text = if (isRu) "Солнечная активность — как это читать" else "Solar activity — how to read",
+                    color = c.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = if (isRu) {
+                        "• CME (корональные выбросы) — главный кандидат на бурю.\n" +
+                            "• Пятна/активные области — вероятность вспышек.\n" +
+                            "• Овал авроры — где сияние вероятнее прямо сейчас."
+                    } else {
+                        "• CME — prime candidate for geomagnetic storms.\n" +
+                            "• Sunspots/active regions — flare potential.\n" +
+                            "• Aurora oval — where aurora is more likely now."
+                    },
+                    color = c.textSecondary
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
 
         SunTabs(strings = strings, selected = tab, onSelect = { tab = it })
 
@@ -88,17 +117,43 @@ fun SunScreen(
             },
             label = "sunTabAnim"
         ) { idx ->
-            val (title, url) = when (idx) {
-                0 -> strings.cme to SpaceWeatherApi.URL_SUN_CME
-                1 -> strings.sunspots to SpaceWeatherApi.URL_SUN_SPOTS
-                else -> strings.auroraOval to SpaceWeatherApi.URL_AURORA_OVAL
+            val (title, url, hint) = when (idx) {
+                0 -> Triple(
+                    strings.cme,
+                    SpaceWeatherApi.URL_SUN_CME,
+                    if (isRu)
+                        "Ищем направленный в сторону Земли выброс и «яркое/плотное» облако."
+                    else
+                        "Look for Earth-directed ejections and dense bright clouds."
+                )
+                1 -> Triple(
+                    strings.sunspots,
+                    SpaceWeatherApi.URL_SUN_SPOTS,
+                    if (isRu)
+                        "Чем больше/сложнее область — тем выше шанс вспышек."
+                    else
+                        "Larger/complex regions generally imply higher flare potential."
+                )
+                else -> Triple(
+                    strings.auroraOval,
+                    SpaceWeatherApi.URL_AURORA_OVAL,
+                    if (isRu)
+                        "Показывает примерную область вероятного сияния (модель)."
+                    else
+                        "Shows approximate auroral probability region (model-based)."
+                )
             }
 
             SunImageCard(
+                strings = strings,
                 title = title,
-                url = url
+                url = url,
+                hint = hint,
+                onTap = { onOpenImage(title, url) } // пока просто «тап»
             )
         }
+
+        Spacer(Modifier.height(8.dp))
     }
 }
 
@@ -108,6 +163,8 @@ private fun SunTabs(
     selected: Int,
     onSelect: (Int) -> Unit
 ) {
+    val c = LocalCosmosTheme.current.colors
+
     GlassCard(Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(10.dp),
@@ -133,45 +190,30 @@ private fun TabPill(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
             .background(bg)
             .padding(horizontal = 12.dp, vertical = 8.dp)
-            .then(Modifier) // без лишних экспериментальных API
     ) {
-        // кликаем всю “пилюлю” через обертку:
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(14.dp))
-                .background(bg)
-                .padding(0.dp)
-        ) {
-            Text(
-                text = text,
-                color = fg,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(bg)
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                    .run {
-                        // локально добавляем клик без импорта clickable сверху
-                        androidx.compose.foundation.clickable(onClick = onClick)
-                    }
-            )
-        }
+        Text(text = text, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
 private fun SunImageCard(
+    strings: AppStrings,
     title: String,
-    url: String
+    url: String,
+    hint: String,
+    onTap: () -> Unit
 ) {
     val c = LocalCosmosTheme.current.colors
 
     GlassCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
             Text(text = title, color = c.textPrimary)
+            Spacer(Modifier.height(6.dp))
+            Text(text = hint, color = c.textSecondary)
+
             Spacer(Modifier.height(10.dp))
 
             Box(
@@ -179,6 +221,7 @@ private fun SunImageCard(
                     .fillMaxWidth()
                     .height(280.dp)
                     .clip(RoundedCornerShape(18.dp))
+                    .clickable { onTap() }
                     .background(c.glass.copy(alpha = 0.18f))
             ) {
                 AsyncImage(
@@ -187,6 +230,9 @@ private fun SunImageCard(
                     modifier = Modifier.fillMaxSize()
                 )
             }
+
+            Spacer(Modifier.height(8.dp))
+            Text(text = strings.open, color = c.textSecondary)
         }
     }
 }
