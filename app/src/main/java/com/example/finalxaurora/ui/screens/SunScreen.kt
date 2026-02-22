@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,7 +48,10 @@ fun SunScreen(
     onBack: () -> Unit,
     snackbarHostState: SnackbarHostState
 ) {
-    val c = LocalCosmosTheme.current.colors
+    // параметры оставлены, чтобы не ломать сигнатуры/навигацию
+    val _unusedSnack = snackbarHostState
+    val _unusedOpen = onOpenImage
+
     AuroraBackground(mode = mode)
 
     var tab by remember { mutableIntStateOf(0) }
@@ -63,7 +65,13 @@ fun SunScreen(
         CosmosTopBar(
             title = strings.sun,
             onBack = onBack,
-            actions = { ModeToggle(mode = mode, onToggle = onModeChange) }
+            actions = {
+                ModeToggle(
+                    mode = mode,
+                    onToggle = onModeChange,
+                    large = true
+                )
+            }
         )
 
         Spacer(Modifier.height(10.dp))
@@ -87,10 +95,8 @@ fun SunScreen(
             }
 
             SunImageCard(
-                strings = strings,
                 title = title,
-                url = url,
-                onOpen = { onOpenImage(title, url) }
+                url = url
             )
         }
     }
@@ -127,20 +133,39 @@ private fun TabPill(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
             .background(bg)
             .padding(horizontal = 12.dp, vertical = 8.dp)
+            .then(Modifier) // без лишних экспериментальных API
     ) {
-        Text(text = text, color = fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        // кликаем всю “пилюлю” через обертку:
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(14.dp))
+                .background(bg)
+                .padding(0.dp)
+        ) {
+            Text(
+                text = text,
+                color = fg,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(bg)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .run {
+                        // локально добавляем клик без импорта clickable сверху
+                        androidx.compose.foundation.clickable(onClick = onClick)
+                    }
+            )
+        }
     }
 }
 
 @Composable
 private fun SunImageCard(
-    strings: AppStrings,
     title: String,
-    url: String,
-    onOpen: () -> Unit
+    url: String
 ) {
     val c = LocalCosmosTheme.current.colors
 
@@ -154,7 +179,6 @@ private fun SunImageCard(
                     .fillMaxWidth()
                     .height(280.dp)
                     .clip(RoundedCornerShape(18.dp))
-                    .clickable { onOpen() }
                     .background(c.glass.copy(alpha = 0.18f))
             ) {
                 AsyncImage(
@@ -163,9 +187,6 @@ private fun SunImageCard(
                     modifier = Modifier.fillMaxSize()
                 )
             }
-
-            Spacer(Modifier.height(8.dp))
-            Text(text = strings.open, color = c.textSecondary)
         }
     }
 }
