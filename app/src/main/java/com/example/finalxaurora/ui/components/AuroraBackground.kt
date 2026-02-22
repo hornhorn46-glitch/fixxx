@@ -29,7 +29,9 @@ fun AuroraBackground(
             animationSpec = tween(durationMillis = 450),
             label = "bgCrossfade"
         ) { m ->
-            val resId = if (m == AppMode.SUN) R.drawable.bg_sun else R.drawable.bg_earth
+            // ВАЖНО: используем реальные имена файлов в res: earth_bg.jpg / sun_bg.jpg
+            val resId = if (m == AppMode.SUN) R.drawable.sun_bg else R.drawable.earth_bg
+
             Image(
                 painter = painterResource(id = resId),
                 contentDescription = null,
@@ -38,7 +40,7 @@ fun AuroraBackground(
             )
         }
 
-        // лёгкий читаемый оверлей (без blur/bitmap операций)
+        // Лёгкий оверлей для читаемости (дёшево по GPU, без blur)
         Box(
             Modifier
                 .fillMaxSize()
@@ -53,7 +55,7 @@ fun AuroraBackground(
                 )
         )
 
-        // тонкий tint под тему (мягко)
+        // Мягкий tint от темы
         Box(
             Modifier
                 .fillMaxSize()
