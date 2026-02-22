@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -27,7 +28,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -83,7 +83,7 @@ fun NowScreen(
                 "Bt — общая сила магнитного поля (по Bx и Bz). Обычно: выше Bt = больше энергии в системе."
             HelpTopic.BFIELD -> strings.bField to
                 "Компас показывает направление поля: по горизонтали Bx, по вертикали Bz.\n" +
-                "Важный момент: когда Bz «южный» (отрицательный), сияние часто усиливается."
+                "Когда Bz «южный» (отрицательный), сияние часто усиливается."
         }
 
         AlertDialog(
@@ -108,12 +108,11 @@ fun NowScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .windowInsetsPadding(WindowInsets.systemBars)
                 .verticalScroll(scroll)
                 .padding(horizontal = 14.dp)
-                .padding(bottom = 110.dp) // гарантированный “запас” под системные панели и удобный скролл
+                .padding(bottom = 110.dp)
         ) {
-            // Top bar row (без experimental TopAppBar)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -144,7 +143,6 @@ fun NowScreen(
                     )
                 }
 
-                // Большая круглая кнопка режима (обводка/акцент — внутри ModeToggle)
                 ModeToggle(mode = mode, onToggle = onModeChange, large = true)
             }
 
@@ -159,7 +157,7 @@ fun NowScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(text = strings.auroraScore, color = c.textSecondary, modifier = Modifier.weight(1f))
-                        IconButton(onClick = { /* пока без отдельного хелпа для score */ }) {
+                        IconButton(onClick = { /* позже можно сделать help для score */ }) {
                             Icon(
                                 imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
                                 contentDescription = "Info",
@@ -307,7 +305,6 @@ fun NowScreen(
 
             Spacer(Modifier.height(14.dp))
 
-            // Маскот — оставляем, но делаем так, чтобы точно был виден
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
