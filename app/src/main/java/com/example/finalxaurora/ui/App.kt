@@ -50,7 +50,7 @@ fun App(
     val vm: SpaceWeatherViewModel = viewModel(factory = vmFactory)
     val state by vm.state
 
-    // ✅ Важно: стек НЕ должен быть пустым ни на одном кадре
+    // Стек всегда НЕ пустой
     val stack = remember {
         mutableStateListOf<Screen>(
             if (mode == AppMode.SUN) Screen.Sun else Screen.Now
@@ -66,21 +66,18 @@ fun App(
         return if (stack.size > 1) {
             stack.removeAt(stack.lastIndex)
             true
-        } else {
-            false
-        }
+        } else false
     }
 
+    // ✅ Важно: переключение режима работает с любого экрана
     fun setMode(newMode: AppMode) {
         if (newMode == mode) return
         mode = newMode
         settings.saveMode(newMode)
 
-        // Если мы на корневом экране — подменяем корень под режим
-        if (stack.size == 1) {
-            stack.clear()
-            stack.add(if (newMode == AppMode.SUN) Screen.Sun else Screen.Now)
-        }
+        // очищаем стек и открываем корень выбранного режима
+        stack.clear()
+        stack.add(if (newMode == AppMode.SUN) Screen.Sun else Screen.Now)
     }
 
     fun setLanguage(newLang: AppLanguage) {
@@ -89,7 +86,7 @@ fun App(
         settings.saveLanguage(newLang)
     }
 
-    // Double back to exit
+    // Double back exit
     val dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     var lastBackMillis by remember { mutableLongStateOf(0L) }
     var backSnackbarTick by remember { mutableIntStateOf(0) }
@@ -124,9 +121,8 @@ fun App(
                     onRefresh = { vm.refresh() },
                     onOpenGraphs = { push(Screen.Graphs) },
                     onOpenSun = {
-                        // Открываем Sun без “залипаний”, в синхроне с mode
-                        if (mode != AppMode.SUN) setMode(AppMode.SUN)
-                        push(Screen.Sun)
+                        // если нужно — просто переключаем режим, App сам откроет корень Sun
+                        setMode(AppMode.SUN)
                     },
                     onOpenSettings = { push(Screen.Settings) },
                     snackbarHostState = snackbarHostState
