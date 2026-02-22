@@ -15,6 +15,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import com.example.finalxaurora.domain.GraphSeries
@@ -48,7 +49,7 @@ fun GraphCard(
                 val leftPad = 44.dp.toPx()   // место под цифры Y
                 val topPad = 10.dp.toPx()
                 val rightPad = 10.dp.toPx()
-                val bottomPad = 22.dp.toPx()
+                val bottomPad = 26.dp.toPx() // чуть больше, чтобы X подписи не резались
 
                 val chartW = max(1f, w - leftPad - rightPad)
                 val chartH = max(1f, h - topPad - bottomPad)
@@ -76,20 +77,20 @@ fun GraphCard(
                 val yMax = series.maxY
                 val yMid = (yMin + yMax) / 2.0
 
-                // Paint for Y labels
-                val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                // Paint for axis labels
+                val axisPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                     color = c.textSecondary.copy(alpha = 0.78f).toArgb()
                     textSize = 12.dp.toPx()
                 }
-                val fm = textPaint.fontMetrics
+                val fm = axisPaint.fontMetrics
 
                 fun drawYLabel(value: Double, y: Float) {
                     val txt = yToText(value)
-                    // baseline so that text is vertically centered on y
                     val baseline = y - (fm.ascent + fm.descent) / 2f
-                    drawContext.canvas.nativeCanvas.drawText(txt, 0f, baseline, textPaint)
+                    drawContext.canvas.nativeCanvas.drawText(txt, 0f, baseline, axisPaint)
                 }
 
+                // Y axis numbers
                 drawYLabel(yMax, topPad)
                 drawYLabel(yMid, topPad + chartH / 2f)
                 drawYLabel(yMin, topPad + chartH)
@@ -128,6 +129,29 @@ fun GraphCard(
                         size = Size(chartW, (topPad + chartH) - y)
                     )
                 }
+
+                // X axis labels (first / middle / last)
+                val xLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = c.textSecondary.copy(alpha = 0.70f).toArgb()
+                    textSize = 11.dp.toPx()
+                    textAlign = Paint.Align.CENTER
+                }
+                val xFm = xLabelPaint.fontMetrics
+                val xBaseline = topPad + chartH + 18.dp.toPx() - (xFm.ascent + xFm.descent) / 2f
+
+                val firstIdx = 0
+                val midIdx = (pts.size - 1) / 2
+                val lastIdx = pts.size - 1
+
+                fun drawXLabel(i: Int) {
+                    val txt = pts[i].label
+                    val x = mapX(i)
+                    drawContext.canvas.nativeCanvas.drawText(txt, x, xBaseline, xLabelPaint)
+                }
+
+                drawXLabel(firstIdx)
+                if (midIdx != firstIdx && midIdx != lastIdx) drawXLabel(midIdx)
+                if (lastIdx != firstIdx) drawXLabel(lastIdx)
 
                 // line path
                 val path = Path()
