@@ -56,7 +56,8 @@ fun GraphsScreen(
             state.seriesKp?.let {
                 GraphCard(
                     series = it,
-                    unitLabel = "Kp",
+                    title = strings.kpIndex,
+                    unit = "Kp",
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(220.dp)
@@ -68,7 +69,8 @@ fun GraphsScreen(
             state.seriesWind?.let {
                 GraphCard(
                     series = it,
-                    unitLabel = "km/s",
+                    title = strings.windSpeed,
+                    unit = "km/s",
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(220.dp)
@@ -80,7 +82,8 @@ fun GraphsScreen(
             state.seriesBz?.let {
                 GraphCard(
                     series = it,
-                    unitLabel = "nT",
+                    title = strings.bz,
+                    unit = "nT",
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(220.dp)
