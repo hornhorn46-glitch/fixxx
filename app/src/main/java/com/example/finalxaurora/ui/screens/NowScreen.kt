@@ -83,17 +83,16 @@ fun NowScreen(
 
         AlertDialog(
             onDismissRequest = { help = null },
-            title = { Text(title) },
-            text = { Text(body) },
+            title = { Text(title, color = c.textPrimary) },
+            text = { Text(body, color = c.textSecondary) },
             confirmButton = {
-                TextButton(onClick = { help = null }) { Text(strings.ok) }
+                TextButton(onClick = { help = null }) {
+                    Text("OK", color = c.accent)
+                }
             },
-            containerColor = c.glass.copy(alpha = 0.96f),
-            titleContentColor = c.textPrimary,
-            // было textSecondary — из-за этого текст реально мог быть "пустым" на стекле
-            textContentColor = c.textPrimary
+            // важно: фон не белый
+            containerColor = androidx.compose.ui.graphics.Color(0xCC0B1220)
         )
-    }
 
     SimplePullToRefresh(
         enabled = true,
