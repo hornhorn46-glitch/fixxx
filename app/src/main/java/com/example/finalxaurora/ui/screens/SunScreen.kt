@@ -8,22 +8,42 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import androidx.compose.ui.platform.LocalContext
+import com.example.finalxaurora.R
 import com.example.finalxaurora.data.SpaceWeatherApi
 import com.example.finalxaurora.domain.AppMode
-import com.example.finalxaurora.ui.components.*
+import com.example.finalxaurora.ui.components.AuroraBackground
+import com.example.finalxaurora.ui.components.GlassCard
+import com.example.finalxaurora.ui.components.ModeToggle
 import com.example.finalxaurora.ui.strings.AppStrings
 import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 
@@ -47,10 +67,22 @@ fun SunScreen(
             .statusBarsPadding()
             .padding(horizontal = 14.dp)
     ) {
-        CosmosTopBar(
-            title = strings.sun,
-            onBack = onBack,
-            actions = { ModeToggle(mode = mode, onToggle = onModeChange) }
+        TopAppBar(
+            title = { Text(text = strings.sun, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_back),
+                        contentDescription = "Back",
+                        tint = c.textPrimary
+                    )
+                }
+            },
+            actions = { ModeToggle(mode = mode, onToggle = onModeChange) },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent,
+                titleContentColor = c.textPrimary
+            )
         )
 
         Spacer(Modifier.height(10.dp))
@@ -63,7 +95,7 @@ fun SunScreen(
             targetState = tab,
             transitionSpec = {
                 (fadeIn(tween(260, easing = FastOutSlowInEasing)) togetherWith
-                        fadeOut(tween(180, easing = FastOutSlowInEasing)))
+                    fadeOut(tween(180, easing = FastOutSlowInEasing)))
             },
             label = "sunTabAnim"
         ) { idx ->
@@ -72,11 +104,10 @@ fun SunScreen(
                 1 -> strings.sunspots to SpaceWeatherApi.URL_SUN_SPOTS
                 else -> strings.auroraOval to SpaceWeatherApi.URL_AURORA_OVAL
             }
-
             SunImageCard(
+                strings = strings,
                 title = title,
                 url = url,
-                strings = strings,
                 onOpen = { onOpenImage(title, url) }
             )
         }
@@ -111,7 +142,7 @@ private fun TabPill(
     val bg = if (selected) c.accentSoft.copy(alpha = 0.55f) else c.glass.copy(alpha = 0.30f)
     val fg = if (selected) c.textPrimary else c.textSecondary
 
-    Box(
+    androidx.compose.foundation.layout.Box(
         modifier = Modifier
             .clip(RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
@@ -124,21 +155,19 @@ private fun TabPill(
 
 @Composable
 private fun SunImageCard(
+    strings: AppStrings,
     title: String,
     url: String,
-    strings: AppStrings,
     onOpen: () -> Unit
 ) {
     val c = LocalCosmosTheme.current.colors
-    val ctx = LocalContext.current
 
     GlassCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
             Text(text = title, color = c.textPrimary)
-
             Spacer(Modifier.height(10.dp))
 
-            Box(
+            androidx.compose.foundation.layout.Box(
                 Modifier
                     .fillMaxWidth()
                     .height(280.dp)
@@ -147,22 +176,14 @@ private fun SunImageCard(
                     .background(c.glass.copy(alpha = 0.18f))
             ) {
                 AsyncImage(
-                    model = ImageRequest.Builder(ctx)
-                        .data(url)
-                        .crossfade(true)
-                        .build(),
+                    model = url,
                     contentDescription = title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                    modifier = Modifier.fillMaxSize()
                 )
             }
 
             Spacer(Modifier.height(8.dp))
-
-            Text(
-                text = strings.tapToOpen,
-                color = c.textSecondary
-            )
+            Text(text = strings.open, color = c.textSecondary)
         }
     }
 }
