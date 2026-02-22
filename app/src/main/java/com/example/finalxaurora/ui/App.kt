@@ -1,5 +1,6 @@
 package com.example.finalxaurora.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -26,7 +27,6 @@ import com.example.finalxaurora.ui.theme.CosmosTheme
 import com.example.finalxaurora.ui.vm.SpaceWeatherViewModel
 import com.example.finalxaurora.ui.vm.VmFactory
 import com.example.finalxaurora.util.SettingsStore
-import androidx.activity.compose.BackHandler
 
 sealed class Screen {
     data object Now : Screen()
@@ -50,12 +50,11 @@ fun App(
     val vm: SpaceWeatherViewModel = viewModel(factory = vmFactory)
     val state by vm.state
 
-    // Navigation stack (no navigation-compose)
-    val stack = remember { mutableStateListOf<Screen>() }
-    LaunchedEffect(Unit) {
-        if (stack.isEmpty()) {
-            stack.add(if (mode == AppMode.SUN) Screen.Sun else Screen.Now)
-        }
+    // ✅ Важно: стек НЕ должен быть пустым ни на одном кадре
+    val stack = remember {
+        mutableStateListOf<Screen>(
+            if (mode == AppMode.SUN) Screen.Sun else Screen.Now
+        )
     }
     val current by remember { derivedStateOf { stack.last() } }
 
@@ -77,7 +76,7 @@ fun App(
         mode = newMode
         settings.saveMode(newMode)
 
-        // If we're on the root screen, swap root content with mode.
+        // Если мы на корневом экране — подменяем корень под режим
         if (stack.size == 1) {
             stack.clear()
             stack.add(if (newMode == AppMode.SUN) Screen.Sun else Screen.Now)
@@ -90,7 +89,7 @@ fun App(
         settings.saveLanguage(newLang)
     }
 
-    // Double back to exit (delegates to system back on second press)
+    // Double back to exit
     val dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     var lastBackMillis by remember { mutableLongStateOf(0L) }
     var backSnackbarTick by remember { mutableIntStateOf(0) }
@@ -125,8 +124,9 @@ fun App(
                     onRefresh = { vm.refresh() },
                     onOpenGraphs = { push(Screen.Graphs) },
                     onOpenSun = {
+                        // Открываем Sun без “залипаний”, в синхроне с mode
                         if (mode != AppMode.SUN) setMode(AppMode.SUN)
-                        if (stack.last() !is Screen.Sun) push(Screen.Sun)
+                        push(Screen.Sun)
                     },
                     onOpenSettings = { push(Screen.Settings) },
                     snackbarHostState = snackbarHostState
