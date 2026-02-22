@@ -14,6 +14,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.finalxaurora.domain.GraphSeries
@@ -45,11 +46,11 @@ fun GraphCard(
                 val w = size.width
                 val h = size.height
                 if (w <= 0f || h <= 0f) return@Canvas
+
                 val padL = 10f
                 val padR = 10f
                 val padT = 6f
                 val padB = 18f
-
                 val plotW = w - padL - padR
                 val plotH = h - padT - padB
 
@@ -61,6 +62,7 @@ fun GraphCard(
                         size = androidx.compose.ui.geometry.Size(plotW, max(0f, y - padT))
                     )
                 }
+
                 series.dangerBelow?.let { d ->
                     val y = yFor(d, series.minY, series.maxY, padT, plotH)
                     drawRect(
@@ -70,7 +72,6 @@ fun GraphCard(
                     )
                 }
 
-                val step = series.gridStep
                 var g = series.minY
                 while (g <= series.maxY + 0.0001) {
                     val y = yFor(g, series.minY, series.maxY, padT, plotH)
@@ -80,7 +81,7 @@ fun GraphCard(
                         end = Offset(padL + plotW, y),
                         strokeWidth = 1.2f
                     )
-                    g += step
+                    g += series.gridStep
                 }
 
                 val pts = series.points
@@ -92,21 +93,28 @@ fun GraphCard(
                 }
 
                 val path = Path()
-                val y0 = yFor(pts[0].value, series.minY, series.maxY, padT, plotH)
-                path.moveTo(xAt(0), y0)
+                path.moveTo(
+                    xAt(0),
+                    yFor(pts[0].value, series.minY, series.maxY, padT, plotH)
+                )
 
                 for (i in 1 until pts.size) {
                     val x1 = xAt(i)
                     val y1 = yFor(pts[i].value, series.minY, series.maxY, padT, plotH)
                     val x0 = xAt(i - 1)
                     val yPrev = yFor(pts[i - 1].value, series.minY, series.maxY, padT, plotH)
-
                     val cx = (x0 + x1) / 2f
                     path.cubicTo(cx, yPrev, cx, y1, x1, y1)
                 }
 
                 val clipW = plotW * anim.coerceIn(0f, 1f)
-                clipRect(left = padL, top = padT, right = padL + clipW, bottom = padT + plotH) {
+
+                clipRect(
+                    left = padL,
+                    top = padT,
+                    right = padL + clipW,
+                    bottom = padT + plotH
+                ) {
                     drawPath(
                         path = path,
                         color = c.accent.copy(alpha = 0.90f),
