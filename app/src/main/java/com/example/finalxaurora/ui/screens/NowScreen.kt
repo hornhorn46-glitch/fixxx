@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -48,7 +47,7 @@ import com.example.finalxaurora.ui.vm.SpaceWeatherState
 import com.example.finalxaurora.util.Format
 import kotlin.math.hypot
 
-private enum class HelpTopic { KP, WIND, BT, BFIELD }
+private enum class HelpTopic { KP, WIND, BT, BFIELD, SCORE }
 
 @Composable
 fun NowScreen(
@@ -75,10 +74,17 @@ fun NowScreen(
 
     if (help != null) {
         val (title, body) = when (help!!) {
-            HelpTopic.KP -> strings.kpIndex to strings.helpKpBody
-            HelpTopic.WIND -> strings.windSpeed to strings.helpWindBody
-            HelpTopic.BT -> strings.bt to strings.helpBtBody
-            HelpTopic.BFIELD -> strings.bFieldDirection to strings.helpBFieldBody
+            HelpTopic.KP -> strings.kpIndex to
+                "Kp — индекс геомагнитной активности (0–9). Чем выше Kp, тем выше шанс яркого сияния и тем южнее его видно."
+            HelpTopic.WIND -> strings.windSpeed to
+                "Скорость солнечного ветра влияет на «давление» на магнитосферу. Выше скорость — чаще сильнее возмущения."
+            HelpTopic.BT -> "Bt" to
+                "Bt — общая сила магнитного поля (собрана из Bx и Bz). Обычно: выше Bt = больше энергии в системе."
+            HelpTopic.BFIELD -> "Направление магнитных линий солнечного ветра" to
+                "Компас показывает направление поля: по горизонтали Bx, по вертикали Bz.\n" +
+                "Когда Bz «южный» (отрицательный), сияние часто усиливается."
+            HelpTopic.SCORE -> strings.auroraScore to
+                "Оценка вероятности/силы сияния по совокупности параметров. Это подсказка, а не гарантия."
         }
 
         AlertDialog(
@@ -86,13 +92,11 @@ fun NowScreen(
             title = { Text(title, color = c.textPrimary) },
             text = { Text(body, color = c.textSecondary) },
             confirmButton = {
-                TextButton(onClick = { help = null }) {
-                    Text("OK", color = c.accent)
-                }
+                TextButton(onClick = { help = null }) { Text("OK", color = c.textPrimary) }
             },
-            // важно: фон не белый
-            containerColor = androidx.compose.ui.graphics.Color(0xCC0B1220)
+            containerColor = c.glass.copy(alpha = 0.92f)
         )
+    }
 
     SimplePullToRefresh(
         enabled = true,
@@ -106,9 +110,10 @@ fun NowScreen(
                 .windowInsetsPadding(WindowInsets.systemBars)
                 .verticalScroll(scroll)
                 .padding(horizontal = 14.dp)
-                // запас под нижнее меню/системные жесты
-                .padding(bottom = 110.dp)
+                // запас снизу, чтобы не упираться в нижние элементы/жесты
+                .padding(bottom = 120.dp)
         ) {
+            // Верхняя строка
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -139,14 +144,13 @@ fun NowScreen(
                     )
                 }
 
-                // (onOpenSun пока не трогаю — ты сказал солнечные картинки позже)
                 ModeToggle(mode = mode, onToggle = onModeChange, large = true)
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.padding(top = 10.dp))
 
+            // Score card
             val score = state.prediction.score
-
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp)) {
                     Row(
@@ -158,10 +162,10 @@ fun NowScreen(
                             color = c.textSecondary,
                             modifier = Modifier.weight(1f)
                         )
-                        IconButton(onClick = { /* позже можно сделать help для score */ }) {
+                        IconButton(onClick = { help = HelpTopic.SCORE }) {
                             Icon(
                                 imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                contentDescription = strings.info,
+                                contentDescription = "Info",
                                 tint = c.textSecondary
                             )
                         }
@@ -172,20 +176,22 @@ fun NowScreen(
                         color = c.accent,
                         style = MaterialTheme.typography.headlineSmall
                     )
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.padding(top = 6.dp))
                     Text(text = state.prediction.title, color = c.textPrimary)
                     Text(text = state.prediction.description, color = c.textSecondary)
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.padding(top = 12.dp))
 
+            // Current values
             val kpNow = state.kp.lastOrNull()?.kp
             val windNow = state.wind.lastOrNull()?.speed
             val bxNow = state.mag.lastOrNull()?.bx
             val bzNow = state.mag.lastOrNull()?.bz
             val btNow = if (bxNow != null && bzNow != null) hypot(bxNow, bzNow) else null
 
+            // Gauges row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -197,7 +203,7 @@ fun NowScreen(
                             IconButton(onClick = { help = HelpTopic.KP }) {
                                 Icon(
                                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = strings.info,
+                                    contentDescription = "Info",
                                     tint = c.textSecondary
                                 )
                             }
@@ -227,7 +233,7 @@ fun NowScreen(
                             IconButton(onClick = { help = HelpTopic.WIND }) {
                                 Icon(
                                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = strings.info,
+                                    contentDescription = "Info",
                                     tint = c.textSecondary
                                 )
                             }
@@ -253,11 +259,11 @@ fun NowScreen(
                 GlassCard(modifier = Modifier.weight(1f)) {
                     Column(Modifier.padding(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(strings.bt, color = c.textSecondary, modifier = Modifier.weight(1f))
+                            Text("Bt", color = c.textSecondary, modifier = Modifier.weight(1f))
                             IconButton(onClick = { help = HelpTopic.BT }) {
                                 Icon(
                                     imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                                    contentDescription = strings.info,
+                                    contentDescription = "Info",
                                     tint = c.textSecondary
                                 )
                             }
@@ -281,17 +287,22 @@ fun NowScreen(
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.padding(top = 12.dp))
 
+            // B-field title row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(strings.bFieldDirection, color = c.textSecondary, modifier = Modifier.weight(1f))
+                Text(
+                    text = "Направление магнитных линий солнечного ветра",
+                    color = c.textSecondary,
+                    modifier = Modifier.weight(1f)
+                )
                 IconButton(onClick = { help = HelpTopic.BFIELD }) {
                     Icon(
                         imageVector = ImageVector.vectorResource(id = R.drawable.ic_info),
-                        contentDescription = strings.info,
+                        contentDescription = "Info",
                         tint = c.textSecondary
                     )
                 }
@@ -304,7 +315,7 @@ fun NowScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.padding(top = 14.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -313,7 +324,7 @@ fun NowScreen(
                 PixelFrog()
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.padding(top = 10.dp))
         }
     }
 }
