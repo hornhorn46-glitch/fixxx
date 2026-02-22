@@ -9,30 +9,30 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
 import com.example.finalxaurora.data.SpaceWeatherApi
 import com.example.finalxaurora.domain.AppMode
 import com.example.finalxaurora.ui.components.AuroraBackground
@@ -51,54 +51,47 @@ fun SunScreen(
     onBack: () -> Unit,
     snackbarHostState: SnackbarHostState
 ) {
+    val c = LocalCosmosTheme.current.colors
     AuroraBackground(mode = mode)
 
     var tab by remember { mutableIntStateOf(0) }
 
-    Scaffold(
-        contentWindowInsets = WindowInsets.safeDrawing,
-        topBar = {
-            CosmosTopBar(
-                title = strings.sun,
-                onBack = onBack
-            ) {
-                ModeToggle(mode = mode, onToggle = onModeChange)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .padding(horizontal = 14.dp)
+    ) {
+        CosmosTopBar(
+            title = strings.sun,
+            onBack = onBack,
+            actions = { ModeToggle(mode = mode, onToggle = onModeChange) }
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+        SunTabs(strings = strings, selected = tab, onSelect = { tab = it })
+
+        Spacer(Modifier.height(12.dp))
+
+        AnimatedContent(
+            targetState = tab,
+            transitionSpec = {
+                (fadeIn(tween(260, easing = FastOutSlowInEasing)) togetherWith
+                        fadeOut(tween(180, easing = FastOutSlowInEasing)))
+            },
+            label = "sunTabAnim"
+        ) { idx ->
+            val (title, url) = when (idx) {
+                0 -> strings.cme to SpaceWeatherApi.URL_SUN_CME
+                1 -> strings.sunspots to SpaceWeatherApi.URL_SUN_SPOTS
+                else -> strings.auroraOval to SpaceWeatherApi.URL_AURORA_OVAL
             }
-        },
-        containerColor = androidx.compose.ui.graphics.Color.Transparent
-    ) { padding ->
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 14.dp)
-        ) {
-            Spacer(Modifier.height(10.dp))
-
-            SunTabs(strings = strings, selected = tab, onSelect = { tab = it })
-
-            Spacer(Modifier.height(12.dp))
-
-            AnimatedContent(
-                targetState = tab,
-                transitionSpec = {
-                    (fadeIn(tween(260, easing = FastOutSlowInEasing)) togetherWith
-                            fadeOut(tween(180, easing = FastOutSlowInEasing)))
-                },
-                label = "sunTabAnim"
-            ) { idx ->
-                val (title, url) = when (idx) {
-                    0 -> strings.cme to SpaceWeatherApi.URL_SUN_CME
-                    1 -> strings.sunspots to SpaceWeatherApi.URL_SUN_SPOTS
-                    else -> strings.auroraOval to SpaceWeatherApi.URL_AURORA_OVAL
-                }
-                SunImageCard(
-                    title = title,
-                    url = url,
-                    onOpen = { onOpenImage(title, url) }
-                )
-            }
+            SunImageCard(
+                title = title,
+                url = url,
+                onOpen = { onOpenImage(title, url) }
+            )
         }
     }
 }
@@ -131,7 +124,7 @@ private fun TabPill(
     val bg = if (selected) c.accentSoft.copy(alpha = 0.55f) else c.glass.copy(alpha = 0.30f)
     val fg = if (selected) c.textPrimary else c.textSecondary
 
-    Box(
+    androidx.compose.foundation.layout.Box(
         modifier = Modifier
             .clip(RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
@@ -149,12 +142,14 @@ private fun SunImageCard(
     onOpen: () -> Unit
 ) {
     val c = LocalCosmosTheme.current.colors
+    val ctx = LocalContext.current
+
     GlassCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
             Text(text = title, color = c.textPrimary)
             Spacer(Modifier.height(10.dp))
 
-            Box(
+            androidx.compose.foundation.layout.Box(
                 Modifier
                     .fillMaxWidth()
                     .height(280.dp)
@@ -163,13 +158,18 @@ private fun SunImageCard(
                     .background(c.glass.copy(alpha = 0.18f))
             ) {
                 AsyncImage(
-                    model = url,
+                    model = ImageRequest.Builder(ctx)
+                        .data(url)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = title,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
             }
+
             Spacer(Modifier.height(8.dp))
-            Text(text = "Tap to open", color = c.textSecondary)
+            Text(text = strings.tapToOpen, color = c.textSecondary)
         }
     }
 }
