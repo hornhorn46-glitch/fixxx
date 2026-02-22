@@ -1,5 +1,6 @@
 package com.example.finalxaurora.ui.components
 
+import android.graphics.Paint
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -13,16 +14,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.ExperimentalTextApi
-import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import com.example.finalxaurora.domain.GraphSeries
 import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 import kotlin.math.abs
 import kotlin.math.max
 
-@OptIn(ExperimentalTextApi::class)
 @Composable
 fun GraphCard(
     series: GraphSeries,
@@ -30,7 +27,6 @@ fun GraphCard(
     unitLabel: String? = null
 ) {
     val c = LocalCosmosTheme.current.colors
-    val t: TextMeasurer = rememberTextMeasurer()
 
     val appear by animateFloatAsState(
         targetValue = 1f,
@@ -48,13 +44,31 @@ fun GraphCard(
                 val w = size.width
                 val h = size.height
 
-                val leftPad = 56f // место под цифры Y (чуть больше)
-                val topPad = 12f
+                val leftPad = 56f
+                val topPad = 14f
                 val rightPad = 10f
-                val bottomPad = 24f
+                val bottomPad = 26f
 
                 val chartW = max(1f, w - leftPad - rightPad)
                 val chartH = max(1f, h - topPad - bottomPad)
+
+                // paints for native text
+                val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    textSize = 28f
+                    color = c.textSecondary.copy(alpha = 0.82f).toArgb()
+                }
+                val unitPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    textSize = 26f
+                    color = c.textSecondary.copy(alpha = 0.70f).toArgb()
+                }
+
+                fun yToText(v: Double): String {
+                    return when {
+                        abs(v) >= 100 -> v.toInt().toString()
+                        abs(v) >= 10 -> String.format("%.1f", v)
+                        else -> String.format("%.2f", v)
+                    }
+                }
 
                 // grid
                 val gridLines = 4
@@ -68,48 +82,29 @@ fun GraphCard(
                     )
                 }
 
-                fun yToText(v: Double): String {
-                    return when {
-                        abs(v) >= 100 -> v.toInt().toString()
-                        abs(v) >= 10 -> String.format("%.1f", v)
-                        else -> String.format("%.2f", v)
-                    }
-                }
-
+                // Y labels (5)
                 val yMin = series.minY
                 val yMax = series.maxY
                 val yMid = (yMin + yMax) / 2.0
                 val yQ1 = yMin + (yMax - yMin) * 0.25
                 val yQ3 = yMin + (yMax - yMin) * 0.75
 
-                fun drawYLabel(value: Double, y: Float) {
-                    val txt = yToText(value)
-                    val layout = t.measure(txt)
-                    drawText(
-                        textLayoutResult = layout,
-                        topLeft = Offset(
-                            x = 0f,
-                            y = y - layout.size.height / 2f
-                        ),
-                        color = c.textSecondary.copy(alpha = 0.82f)
-                    )
+                fun drawLabel(text: String, x: Float, yCenter: Float, paint: Paint) {
+                    // baseline correction
+                    val fm = paint.fontMetrics
+                    val baseline = yCenter - (fm.ascent + fm.descent) / 2f
+                    drawContext.canvas.nativeCanvas.drawText(text, x, baseline, paint)
                 }
 
-                // 5 меток по Y: max, 3/4, mid, 1/4, min
-                drawYLabel(yMax, topPad)
-                drawYLabel(yQ3, topPad + chartH * 0.25f)
-                drawYLabel(yMid, topPad + chartH * 0.50f)
-                drawYLabel(yQ1, topPad + chartH * 0.75f)
-                drawYLabel(yMin, topPad + chartH)
+                drawLabel(yToText(yMax), 0f, topPad, textPaint)
+                drawLabel(yToText(yQ3), 0f, topPad + chartH * 0.25f, textPaint)
+                drawLabel(yToText(yMid), 0f, topPad + chartH * 0.50f, textPaint)
+                drawLabel(yToText(yQ1), 0f, topPad + chartH * 0.75f, textPaint)
+                drawLabel(yToText(yMin), 0f, topPad + chartH, textPaint)
 
-                // единицы измерения (если заданы)
+                // unit label (top-left in chart area)
                 unitLabel?.let { u ->
-                    val layout = t.measure(u)
-                    drawText(
-                        textLayoutResult = layout,
-                        topLeft = Offset(leftPad, 0f),
-                        color = c.textSecondary.copy(alpha = 0.70f)
-                    )
+                    drawContext.canvas.nativeCanvas.drawText(u, leftPad, 26f, unitPaint)
                 }
 
                 val pts = series.points
@@ -163,4 +158,14 @@ fun GraphCard(
             }
         }
     }
+}
+
+// Local helper, чтобы не тянуть лишние импорты в файле
+private fun androidx.compose.ui.graphics.Color.toArgb(): Int {
+    return android.graphics.Color.argb(
+        (alpha * 255f).toInt().coerceIn(0, 255),
+        (red * 255f).toInt().coerceIn(0, 255),
+        (green * 255f).toInt().coerceIn(0, 255),
+        (blue * 255f).toInt().coerceIn(0, 255)
+    )
 }
