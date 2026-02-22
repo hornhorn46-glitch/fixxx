@@ -1,76 +1,77 @@
 package com.example.finalxaurora.ui.components
 
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import kotlin.math.abs
 import kotlin.random.Random
 
-private data class SnowParticle(
-    val x0: Float,
-    val y0: Float,
+private data class SnowP(
+    val x: Float,
+    val y: Float,
     val r: Float,
-    val a: Float,
-    val speed: Float,
-    val wind: Float
+    val speedY: Float,
+    val driftX: Float,
+    val a: Float
 )
 
 @Composable
 fun SnowParticles(
     modifier: Modifier = Modifier,
-    maxParticles: Int = 40
+    maxParticles: Int = 28,
+    baseAlpha: Float = 0.18f
 ) {
-    val seed = rememberParticles(maxParticles)
-    val inf = rememberInfiniteTransition(label = "snowInf")
+    val particles = remember(maxParticles) {
+        val rnd = Random(7)
+        List(maxParticles) {
+            SnowP(
+                x = rnd.nextFloat(),
+                y = rnd.nextFloat(),
+                r = 0.55f + rnd.nextFloat() * 1.15f,
+                speedY = 0.06f + rnd.nextFloat() * 0.12f,
+                driftX = (rnd.nextFloat() - 0.5f) * 0.08f,
+                a = (baseAlpha * (0.55f + rnd.nextFloat() * 0.65f)).coerceIn(0.06f, 0.40f)
+            )
+        }
+    }
 
-    val t by inf.animateFloat(
+    val inf = rememberInfiniteTransition(label = "snowInf")
+    val t = inf.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 12_000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            animation = tween(durationMillis = 9000, easing = LinearEasing)
         ),
-        label = "t"
-    )
+        label = "snowT"
+    ).value
 
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-        if (w <= 1f || h <= 1f) return@Canvas
+        if (w <= 0f || h <= 0f) return@Canvas
 
-        seed.forEach { p ->
-            val y = ((p.y0 + (t * p.speed)) % 1f) * h
-            val windPhase = (t * 2f - 1f)
-            val x = ((p.x0 + windPhase * p.wind) % 1f) * w
+        // “ветер” — очень лёгкий
+        val wind = (t - 0.5f) * 2f
 
+        particles.forEach { p ->
+            val yy = ((p.y + t * p.speedY) % 1f) * h
+            val xx = ((p.x + wind * p.driftX) % 1f) * w
+
+            // лёгкое мерцание без дорогостоящих эффектов
+            val pulse = 0.88f + 0.12f * (1f - abs(wind))
             drawCircle(
-                color = Color.White.copy(alpha = (p.a * 0.35f).coerceIn(0.02f, 0.22f)),
+                color = Color.White.copy(alpha = (p.a * pulse).coerceIn(0f, 0.45f)),
                 radius = p.r,
-                center = androidx.compose.ui.geometry.Offset(x, y)
+                center = Offset(xx, yy)
             )
         }
     }
-}
-
-@Composable
-private fun rememberParticles(count: Int): List<SnowParticle> {
-    // стабильный набор частиц на время жизни композиции
-    val r = Random(42)
-    return List(count.coerceIn(8, 40)) {
-        val x0 = r.nextFloat().coerceIn(0.02f, 0.98f)
-        val y0 = r.nextFloat().coerceIn(0.02f, 0.98f)
-        val rad = (1.0f + r.nextFloat() * 2.2f)
-        val alpha = (0.10f + r.nextFloat() * 0.30f)
-        val speed = (0.35f + r.nextFloat() * 0.55f) // доля экрана за цикл
-        val wind = (0.010f + r.nextFloat() * 0.030f) * (if (r.nextBoolean()) 1f else -1f)
-        SnowParticle(x0, y0, rad, alpha, speed, wind)
-    }.sortedBy { abs(it.wind) }
 }
