@@ -9,20 +9,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,6 +33,7 @@ import com.example.finalxaurora.ui.components.ModeToggle
 import com.example.finalxaurora.ui.components.PixelFrog
 import com.example.finalxaurora.ui.components.PremiumGauge
 import com.example.finalxaurora.ui.components.SimplePullToRefresh
+import com.example.finalxaurora.ui.components.CosmosTopBar
 import com.example.finalxaurora.ui.strings.AppStrings
 import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 import com.example.finalxaurora.ui.vm.SpaceWeatherState
@@ -71,24 +68,16 @@ fun NowScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(WindowInsets.statusBars.asPaddingValues())
+                .statusBarsPadding()
                 .padding(horizontal = 14.dp)
         ) {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "FinalXAurora",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
+            // Без экспериментальных API: используем ваш стабильный CosmosTopBar
+            CosmosTopBar(
+                title = "FinalXAurora",
+                onBack = null,
                 actions = {
                     ModeToggle(mode = mode, onToggle = onModeChange)
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = c.textPrimary
-                )
+                }
             )
 
             Spacer(Modifier.height(10.dp))
@@ -230,3 +219,4 @@ fun NowScreen(
         }
     }
 }
+```0
