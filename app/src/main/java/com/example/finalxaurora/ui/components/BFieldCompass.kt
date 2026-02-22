@@ -4,18 +4,18 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.finalxaurora.ui.theme.LocalCosmosTheme
 import com.example.finalxaurora.util.Format
@@ -33,113 +33,83 @@ fun BFieldCompass(
 ) {
     val c = LocalCosmosTheme.current.colors
 
-    // IMPORTANT:
-    // Screen Y axis goes down.
-    // Negative Bz should point DOWN → invert sign here.
-    val vx = bx.toFloat()
-    val vy = (-bz).toFloat()
-
-    val rawAngle = atan2(vy, vx)
-    val angleDeg = Math.toDegrees(rawAngle.toDouble()).toFloat()
-
-    val animatedAngle by animateFloatAsState(
-        targetValue = angleDeg,
-        animationSpec = spring(
-            dampingRatio = 0.82f,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "bfieldNeedle"
-    )
-
     GlassCard(modifier = modifier) {
         Column(Modifier.padding(14.dp)) {
-
-            Text(
-                text = title,
-                color = c.textPrimary,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+            HeaderRow(
+                title = title,
+                value = "Bx ${Format.oneDecOrDash(bx)}   Bz ${Format.oneDecOrDash(bz)}",
+                valueColor = c.textSecondary
             )
 
             Spacer(Modifier.height(10.dp))
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                ) {
-                    val s = min(size.width, size.height)
-                    val stroke = s * 0.05f
-                    val pad = stroke * 1.2f
+            // Вектор: X вправо, Z вниз при отрицательном.
+            // То есть рисуем y = -bz (чтобы отрицательный Bz был вниз на экране).
+            val vx = bx.toFloat()
+            val vy = (-bz).toFloat()
 
-                    val rect = Rect(
-                        left = (size.width - s) / 2f + pad,
-                        top = (size.height - s) / 2f + pad,
-                        right = (size.width + s) / 2f - pad,
-                        bottom = (size.height + s) / 2f - pad
-                    )
+            val targetAngle = atan2(vy, vx) // radians, 0 -> вправо
 
-                    val center = Offset(size.width / 2f, size.height / 2f)
-                    val radius = rect.width / 2f
+            val angle by animateFloatAsState(
+                targetValue = targetAngle,
+                animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = 0.78f),
+                label = "compassAngle"
+            )
 
-                    // Base circle
+            Canvas(modifier = Modifier.fillMaxWidth().height(210.dp)) {
+                val r = min(size.width, size.height) * 0.42f
+                val cx = size.width / 2f
+                val cy = size.height / 2f
+
+                // ring
+                drawCircle(
+                    color = c.textSecondary.copy(alpha = 0.18f),
+                    radius = r,
+                    center = Offset(cx, cy),
+                    style = Stroke(width = 2.2f)
+                )
+
+                // Sector zones around "down" direction (negative Bz => down)
+                // Сектора по углу от "вниз" (90deg) +/- thresholds.
+                // Красн ±5°, оранж ±20°, жёлт ±40°, зел ±65°
+                fun degToRad(d: Float) = (d * Math.PI.toFloat() / 180f)
+                val down = (Math.PI.toFloat() / 2f) // вниз в системе Canvas (x вправо, y вниз)
+
+                fun drawSector(spanDeg: Float, color: androidx.compose.ui.graphics.Color, alpha: Float) {
+                    val start = down - degToRad(spanDeg)
+                    val sweep = degToRad(spanDeg * 2f)
                     drawArc(
-                        color = c.glass.copy(alpha = 0.25f),
-                        startAngle = 0f,
-                        sweepAngle = 360f,
+                        color = color.copy(alpha = alpha),
+                        startAngle = (start * 180f / Math.PI.toFloat()),
+                        sweepAngle = (sweep * 180f / Math.PI.toFloat()),
                         useCenter = false,
-                        topLeft = rect.topLeft,
-                        size = rect.size,
-                        style = Stroke(width = stroke, cap = StrokeCap.Round)
-                    )
-
-                    // Needle
-                    val rad = Math.toRadians(animatedAngle.toDouble()).toFloat()
-                    val len = radius * 0.8f
-                    val end = Offset(
-                        center.x + cos(rad) * len,
-                        center.y + sin(rad) * len
-                    )
-
-                    drawLine(
-                        color = c.accent.copy(alpha = 0.25f),
-                        start = center,
-                        end = end,
-                        strokeWidth = stroke * 0.6f,
-                        cap = StrokeCap.Round
-                    )
-
-                    drawLine(
-                        color = c.accent,
-                        start = center,
-                        end = end,
-                        strokeWidth = stroke * 0.25f,
-                        cap = StrokeCap.Round
-                    )
-
-                    drawCircle(
-                        color = c.accent,
-                        radius = stroke * 0.4f,
-                        center = center
+                        topLeft = Offset(cx - r, cy - r),
+                        size = Size(r * 2f, r * 2f),
+                        style = Stroke(width = r * 0.24f, cap = StrokeCap.Round)
                     )
                 }
 
-                Text(
-                    text = "Bx ${Format.oneDecOrDash(bx)} · Bz ${Format.oneDecOrDash(bz)}",
-                    color = c.textSecondary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 6.dp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                drawSector(65f, c.ok, 0.10f)
+                drawSector(40f, c.warning, 0.12f)
+                drawSector(20f, c.warning, 0.14f)
+                drawSector(5f, c.danger, 0.18f)
+
+                // needle
+                val nx = cx + cos(angle) * (r * 0.92f)
+                val ny = cy + sin(angle) * (r * 0.92f)
+
+                drawLine(
+                    color = c.accent.copy(alpha = 0.95f),
+                    start = Offset(cx, cy),
+                    end = Offset(nx, ny),
+                    strokeWidth = 6.0f,
+                    cap = StrokeCap.Round
+                )
+
+                drawCircle(
+                    color = c.glass.copy(alpha = 0.30f),
+                    radius = r * 0.10f,
+                    center = Offset(cx, cy)
                 )
             }
         }
