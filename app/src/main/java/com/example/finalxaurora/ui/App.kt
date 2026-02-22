@@ -1,12 +1,13 @@
 package com.example.finalxaurora.ui
 
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -25,6 +26,7 @@ import com.example.finalxaurora.ui.theme.CosmosTheme
 import com.example.finalxaurora.ui.vm.SpaceWeatherViewModel
 import com.example.finalxaurora.ui.vm.VmFactory
 import com.example.finalxaurora.util.SettingsStore
+import androidx.activity.compose.BackHandler
 
 sealed class Screen {
     data object Now : Screen()
@@ -49,7 +51,12 @@ fun App(
     val state by vm.state
 
     // Navigation stack (no navigation-compose)
-    val stack = remember { mutableStateListOf<Screen>(Screen.Now) }
+    val stack = remember { mutableStateListOf<Screen>() }
+    LaunchedEffect(Unit) {
+        if (stack.isEmpty()) {
+            stack.add(if (mode == AppMode.SUN) Screen.Sun else Screen.Now)
+        }
+    }
     val current by remember { derivedStateOf { stack.last() } }
 
     fun push(s: Screen) {
@@ -70,7 +77,7 @@ fun App(
         mode = newMode
         settings.saveMode(newMode)
 
-        // If user is on base screen, switch content screen instantly with mode.
+        // If we're on the root screen, swap root content with mode.
         if (stack.size == 1) {
             stack.clear()
             stack.add(if (newMode == AppMode.SUN) Screen.Sun else Screen.Now)
@@ -83,30 +90,32 @@ fun App(
         settings.saveLanguage(newLang)
     }
 
-    // Double back to exit
+    // Double back to exit (delegates to system back on second press)
+    val dispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
     var lastBackMillis by remember { mutableLongStateOf(0L) }
+    var backSnackbarTick by remember { mutableIntStateOf(0) }
+
     BackHandler {
         val didPop = pop()
         if (didPop) return@BackHandler
 
         val now = System.currentTimeMillis()
         if (now - lastBackMillis <= 1500L) {
-            // Let Activity handle exit naturally
+            dispatcher?.onBackPressed()
         } else {
             lastBackMillis = now
-            // showSnackbar is suspend -> launch via LaunchedEffect trigger
-            vm.state.value = vm.state.value.copy(
-                errorMessage = null // keep state clean; snackbar is UI-only
-            )
-            // Fire-and-forget snackbar
-            androidx.compose.runtime.LaunchedEffect(lastBackMillis) {
-                snackbarHostState.showSnackbar(strings.backAgainToExit)
-            }
+            backSnackbarTick++
+        }
+    }
+
+    LaunchedEffect(backSnackbarTick) {
+        if (backSnackbarTick > 0) {
+            snackbarHostState.showSnackbar(strings.backAgainToExit)
         }
     }
 
     CosmosTheme(mode = mode, auroraScore = state.prediction.score) {
-        when (current) {
+        when (val s = current) {
             is Screen.Now -> {
                 NowScreen(
                     strings = strings,
@@ -116,7 +125,6 @@ fun App(
                     onRefresh = { vm.refresh() },
                     onOpenGraphs = { push(Screen.Graphs) },
                     onOpenSun = {
-                        // keep mode in sync if user opens Sun explicitly
                         if (mode != AppMode.SUN) setMode(AppMode.SUN)
                         if (stack.last() !is Screen.Sun) push(Screen.Sun)
                     },
@@ -160,7 +168,6 @@ fun App(
             }
 
             is Screen.FullImage -> {
-                val s = current as Screen.FullImage
                 FullImageScreen(
                     title = s.title,
                     url = s.url,
@@ -172,7 +179,6 @@ fun App(
             }
         }
 
-        // Snackbar host on top of everything
         SnackbarHost(hostState = snackbarHostState)
     }
 }
